@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Ticket, Bid } from '@/types'
+import { ethers } from 'ethers'
 
 
 // Function to load tickets from JSON file
@@ -105,9 +106,49 @@ export function useTickets() {
     // In a real app, this would be a smart contract call
     console.log(`Buying ticket ${ticketId} for ${buyer}`)
     
-    // Remove ticket from listings
-    setTickets(prev => prev.filter(ticket => ticket.id !== ticketId))
-    
+    // Create provider and signer from MetaMask
+    const provider = new ethers.BrowserProvider(window.ethereum as any)
+    const signer = await provider.getSigner()
+
+    console.log(`Signer address: ${await signer.getAddress()}`)
+    // Find the ticket to buy
+    const { AUCTION_CONTRACT_ABI, CONTRACT_ADDRESS_AUCTION_DATA } = await import('@/lib/contract')
+
+    // Create contract instance
+    const auctionContract = new ethers.Contract(
+      CONTRACT_ADDRESS_AUCTION_DATA!,
+      AUCTION_CONTRACT_ABI,
+      signer
+    )
+
+    console.log("Tickets:", tickets);
+    console.log("Looking for ticketId:", ticketId);
+    const auctionId = tickets.find(t => t.id === ticketId)?.auctionId;
+    console.log("Found auctionId:", auctionId);
+
+    console.log(`Buying ticket with auctionId: ${auctionId}`)
+    // buy the ticket 
+    const tx = await auctionContract.buyNow(auctionId)
+
+    const receipt = await tx.wait()
+    console.log('Transaction receipt:', receipt)
+
+    const event = receipt.events?.find((e: any) => e.event === 'BuyNowExecuted')
+    console.log('BuyNowExecuted event:', event)
+
+    if (event) {
+      const emittedAuctionId = event.args?.auctionId.toString()
+      const emittedBuyer = event.args?.buyer
+      const emittedFinalPrice = event.args?.buyNowPrice.toString()
+
+      console.log(`Ticket ${emittedAuctionId} bought by ${emittedBuyer} for ${emittedFinalPrice}`)
+    }
+  
+
+    // Remove ticket from local state
+    // setTickets(prev => prev.filter(ticket => ticket.id !== ticketId))
+
+
     return true
   }
 

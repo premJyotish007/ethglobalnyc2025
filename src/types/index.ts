@@ -13,6 +13,7 @@ export interface Ticket {
   isListed: boolean
   imageUrl?: string
   bidExpiryTime?: number // Unix timestamp when bidding expires
+  auctionId?: number // ID of the auction this ticket is part of
 }
 
 export interface Bid {
