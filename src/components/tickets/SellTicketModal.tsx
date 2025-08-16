@@ -35,7 +35,7 @@ interface SellTicketFormData {
 interface SellTicketModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (ticketData: { tokenId: string; price: bigint }) => Promise<void>
+  onSubmit: (ticketData: { tokenId: string; price: bigint; ticketInfo?: any }) => Promise<void>
   isLoading: boolean
   userAddress?: string
 }
@@ -63,7 +63,6 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
     setIsLoadingTickets(true)
     try {
       const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
-      console.log(CONTRACT_ADDRESS, CONTRACT_ABI)
       const contract = new ethers.Contract(CONTRACT_ADDRESS!, CONTRACT_ABI, provider)
       
       const currentTokenId = await contract.getCurrentTokenId()
@@ -82,6 +81,8 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
       // Batch get ticket info for owned tokens only
       const ticketInfoPromises = ownedTokenIds.map(id => contract.getTicketInfo(id))
       const ticketInfoResults = await Promise.all(ticketInfoPromises)
+
+      console.log(ticketInfoResults)
       
       // Build tickets array
       ownedTokenIds.forEach((tokenId, index) => {
@@ -129,7 +130,8 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
     
     await onSubmit({
       tokenId: selectedTicket.tokenId,
-      price: priceInWei
+      price: priceInWei,
+      ticketInfo: selectedTicket.ticketInfo
     })
 
     // Reset form

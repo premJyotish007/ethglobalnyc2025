@@ -6,25 +6,28 @@ import { CONTRACT_ADDRESS } from '@/lib/contract'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { tokenId, price, userAddress } = body
+    const { ticketData, userAddress } = body
 
     // Read existing tickets
     const ticketsPath = path.join(process.cwd(), 'public', 'data', 'tickets.json')
     const ticketsData = fs.readFileSync(ticketsPath, 'utf8')
     const tickets = JSON.parse(ticketsData)
+    
 
-    // Create new ticket entry
+
+
+    // Create new ticket entry using the complete ticketData
     const newTicket = {
       id: (tickets.length + 1).toString(),
-      eventName: `NFT Ticket #${tokenId}`, // This would come from the smart contract in a real app
-      eventDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
+      eventName: ticketData.ticketInfo?.eventName || `NFT Ticket #${ticketData.tokenId}`,
+      eventDate: ticketData.ticketInfo?.eventDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       venue: "NFT Marketplace",
-      section: "NFT",
-      row: "A",
-      seat: tokenId,
-      price: price.toString(),
+      section: ticketData.ticketInfo?.section || "NFT",
+      row: ticketData.ticketInfo?.row || "A",
+      seat: ticketData.ticketInfo?.seat || ticketData.tokenId,
+      price: ticketData.price, // Convert string back to BigInt for storage
       seller: userAddress,
-      tokenId: tokenId,
+      tokenId: ticketData.tokenId,
       tokenContractAddress: CONTRACT_ADDRESS,
       isListed: true,
       imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400"

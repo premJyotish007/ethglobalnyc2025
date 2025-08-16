@@ -72,7 +72,7 @@ export default function Home() {
     }
   }
 
-  const handleSellTicket = async (ticketData: { tokenId: string; price: bigint }) => {
+  const handleSellTicket = async (ticketData: { tokenId: string; price: bigint; ticketInfo?: any }) => {
     if (!connection.address) return
     
     setIsProcessing(true)
@@ -84,8 +84,10 @@ export default function Home() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tokenId: ticketData.tokenId,
-          price: ticketData.price.toString(),
+          ticketData: {
+            ...ticketData,
+            price: ticketData.price.toString() // Convert BigInt to string for JSON serialization
+          },
           userAddress: connection.address
         }),
       })
