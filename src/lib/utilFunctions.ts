@@ -1,6 +1,7 @@
 import { Ticket } from '@/types'
 import { formatUSDC } from '@/lib/utils'
 import { Ticket as TicketIcon, DollarSign, Users, TrendingUp } from 'lucide-react'
+import { ethers } from 'ethers'
 
 export interface HandleFunctionsProps {
   connection: {
@@ -134,7 +135,7 @@ export const createHandleFunctions = ({
     
     setIsProcessing(true)
     try {
-      // Call API to persist ticket to database
+      // Step 1: Call API to persist ticket to database
       const response = await fetch('/api/tickets', {
         method: 'POST',
         headers: {
@@ -155,6 +156,85 @@ export const createHandleFunctions = ({
 
       const result = await response.json()
       console.log('Ticket added to database:', result)
+      
+      // Step 2: Create auction on blockchain using MetaMask
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          // Request account access
+          const accounts = await (window.ethereum as any).request({ method: 'eth_requestAccounts' })
+          const userAddress = accounts[0]
+
+          // Create provider and signer from MetaMask
+          const provider = new ethers.BrowserProvider(window.ethereum as any)
+          const signer = await provider.getSigner()
+
+          // Import auction contract ABI and address
+          const { AUCTION_CONTRACT_ABI, CONTRACT_ADDRESS_AUCTION_DATA } = await import('@/lib/contract')
+
+          // Create contract instance
+          const auctionContract = new ethers.Contract(
+            CONTRACT_ADDRESS_AUCTION_DATA!,
+            AUCTION_CONTRACT_ABI,
+            signer
+          )
+
+          // Prepare auction parameters
+          const ticketId = ticketData.tokenId
+          const ticketCount = 1
+          const startPrice = ticketData.price
+          const buyNowPrice = ticketData.price // Same as start price for simplicity
+          const minIncrement = ethers.parseEther("0.01") // 0.01 ETH minimum increment
+          const expiryTime = Math.floor(Date.now() / 1000) + (24 * 60 * 60) // 24 hours from now
+
+          console.log('Creating auction with parameters:', {
+            ticketId,
+            ticketCount,
+            startPrice: startPrice.toString(),
+            buyNowPrice: buyNowPrice.toString(),
+            minIncrement: minIncrement.toString(),
+            expiryTime
+          })
+
+          // Call the createAuction function
+          const tx = await auctionContract.createAuction(
+            ticketId,
+            ticketCount,
+            startPrice,
+            buyNowPrice,
+            minIncrement,
+            expiryTime
+          )
+
+          console.log('Auction transaction sent:', tx.hash)
+
+          // Wait for transaction to be mined
+          const receipt = await tx.wait()
+          console.log('Auction transaction confirmed:', receipt)
+
+          // Get the auction ID from the event
+          const auctionCreatedEvent = receipt.logs.find((log: any) => {
+            try {
+              const parsedLog = auctionContract.interface.parseLog(log)
+              return parsedLog?.name === 'AuctionCreated'
+            } catch (error) {
+              return false
+            }
+          })
+
+          if (auctionCreatedEvent) {
+            const parsedLog = auctionContract.interface.parseLog(auctionCreatedEvent)
+            if (parsedLog) {
+              const auctionId = parsedLog.args.auctionId.toString()
+              console.log('Auction created successfully with ID:', auctionId)
+            }
+          }
+
+        } catch (auctionError) {
+          console.error('Failed to create auction:', auctionError)
+          // Don't throw here - the ticket was already added to database
+          // Just log the error and continue
+        }
+      }
       
       // Refresh the tickets list to show the new ticket
       await refreshTickets()

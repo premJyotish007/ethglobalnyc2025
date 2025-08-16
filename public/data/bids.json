@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "id": "1",
+    "bidder": "0x9c413CE61D1286b88e9145aDB68BdfA39c273a06",
+    "amount": "7000000",
+    "tokenId": "6",
+    "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
+    "recipient": "0xd7FeB809e8B9C52CE3C0B792506D2FE474aAE06D",
+    "timestamp": 1755380404804,
+    "status": "active"
+  }
+]
