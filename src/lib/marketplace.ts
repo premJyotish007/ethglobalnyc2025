@@ -3,7 +3,8 @@ import { TicketMarketplace__factory } from '../../contracts/typechain-types';
 
 // Contract addresses - update these after deployment
 const MARKETPLACE_ADDRESS = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS || '';
-const USDC_ADDRESS = '0x036CbD53842c5426634e7929541eC2318f3dCF7c'; // Base Sepolia USDC
+// Using a mock address for now to test basic functionality
+const USDC_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // ABI for the marketplace contract
 const MARKETPLACE_ABI = [
@@ -29,8 +30,8 @@ export class MarketplaceService {
    */
   async buyTicket(tokenId: string, amount: number, price: bigint): Promise<boolean> {
     try {
-      // First, approve USDC spending
-      await this.approveUSDC(price * BigInt(amount));
+      // For testing, skip USDC approval and just call the marketplace
+      console.log(`Attempting to buy ticket ${tokenId} for ${price} wei`);
       
       // Then buy the ticket
       const tx = await this.marketplace.buyTicket(tokenId, amount);

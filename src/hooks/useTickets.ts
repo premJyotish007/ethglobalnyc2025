@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { ethers } from 'ethers'
 import { Ticket, Bid } from '@/types'
+import { MarketplaceService } from '@/lib/marketplace'
 
 
 // Function to load tickets from JSON file
