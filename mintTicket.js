@@ -7,7 +7,7 @@ const contractABI = [
 
 // Contract configuration
 const CONTRACT_ADDRESS = "0xEc05b206132935F27A5e150c365eEE8D0906cE8b";
-const TO_ADDRESS = '0xe7d0A248Ee60B2B91d83a54AEe5da92ea62E3304';
+const TO_ADDRESS = '0xf5a349ABFFe09D168a95cEdeb7CE084cA200F2a3';
 
 async function createTickets() {
   try {

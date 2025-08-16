@@ -45,7 +45,7 @@
     "imageUrl": "https://images.unsplash.com/photo-1543100716-159c0313ba9d?w=900&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YmV5b25jZXxlbnwwfHwwfHx8MA%3D%3D"
   },
   {
-    "id": "4",
+    "id": "5",
     "eventName": "Weeknd Concert",
     "eventDate": "8/23/2025",
     "venue": "NFT Marketplace",
@@ -58,6 +58,22 @@
     "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
     "isListed": true,
     "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
-    "bidExpiryTime": 1755364488
+    "bidExpiryTime": 1755373805
+  },
+  {
+    "id": "5",
+    "eventName": "Weeknd Concert",
+    "eventDate": "8/23/2025",
+    "venue": "NFT Marketplace",
+    "section": "100",
+    "row": "A",
+    "seat": "15",
+    "price": "10000000",
+    "seller": "0xd7FeB809e8B9C52CE3C0B792506D2FE474aAE06D",
+    "tokenId": "2",
+    "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
+    "isListed": true,
+    "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+    "bidExpiryTime": 1755373861
   }
 ]
