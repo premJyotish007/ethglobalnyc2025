@@ -102,13 +102,43 @@ export function useTickets() {
   }
 
   const buyTicket = async (ticketId: string, buyer: string) => {
-    // In a real app, this would be a smart contract call
-    console.log(`Buying ticket ${ticketId} for ${buyer}`)
-    
-    // Remove ticket from listings
-    setTickets(prev => prev.filter(ticket => ticket.id !== ticketId))
-    
-    return true
+    try {
+      // Get the ticket details
+      const ticket = tickets.find(t => t.id === ticketId);
+      if (!ticket) {
+        throw new Error('Ticket not found');
+      }
+
+      // Check if we have a wallet connection
+      if (!window.ethereum) {
+        throw new Error('No wallet connected');
+      }
+
+      // Create provider and signer
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      
+      // Create marketplace service
+      const marketplaceService = new MarketplaceService(provider, signer);
+      
+      // Buy the ticket (amount = 1 for now)
+      const success = await marketplaceService.buyTicket(
+        ticket.tokenId,
+        1,
+        ticket.price
+      );
+
+      if (success) {
+        // Remove ticket from listings
+        setTickets(prev => prev.filter(ticket => ticket.id !== ticketId));
+        console.log(`Successfully bought ticket ${ticketId}`);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('Failed to buy ticket:', error);
+      throw error;
+    }
   }
 
   const listTicket = async (ticket: Omit<Ticket, 'id' | 'tokenId'>) => {
