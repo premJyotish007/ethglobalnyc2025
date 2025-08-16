@@ -1,4 +1,4 @@
-const { ethers } = require('ethers');
+import { ethers } from 'ethers';
 
 // Contract ABI - minimal version for createTickets function
 const contractABI = [
@@ -7,7 +7,7 @@ const contractABI = [
 
 // Contract configuration
 const CONTRACT_ADDRESS = "0xEc05b206132935F27A5e150c365eEE8D0906cE8b";
-const TO_ADDRESS = '0xf5a349ABFFe09D168a95cEdeb7CE084cA200F2a3';
+const TO_ADDRESS = '0xd7FeB809e8B9C52CE3C0B792506D2FE474aAE06D';
 
 async function createTickets() {
   try {
@@ -23,7 +23,7 @@ async function createTickets() {
     
     // Ticket parameters
     const amount = 1;
-    const eventName = "Weeknd Concert";
+    const eventName = "random 3";
     const section = "100";
     const row = "A";
     const seat = "15";

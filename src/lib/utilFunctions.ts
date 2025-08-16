@@ -129,33 +129,14 @@ export const createHandleFunctions = ({
       setIsProcessing(false)
     }
   }
-
-  const handleSellTicket = async (ticketData: { tokenId: string; price: bigint; ticketInfo?: any }) => {
+  const handleSellTicket = async (ticketData: {
+    auctionId: any; tokenId: string; price: bigint; ticketInfo?: any;
+  }) => {
     if (!connection.address) return
     
     setIsProcessing(true)
     try {
       // Step 1: Call API to persist ticket to database
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ticketData: {
-            ...ticketData,
-            price: ticketData.price.toString() // Convert BigInt to string for JSON serialization
-          },
-          userAddress: connection.address
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to add ticket to database')
-      }
-
-      const result = await response.json()
-      console.log('Ticket added to database:', result)
       
       // Step 2: Create auction on blockchain using MetaMask
       if (typeof window !== 'undefined' && window.ethereum) {
@@ -225,6 +206,28 @@ export const createHandleFunctions = ({
             const parsedLog = auctionContract.interface.parseLog(auctionCreatedEvent)
             if (parsedLog) {
               const auctionId = parsedLog.args.auctionId.toString()
+              ticketData.auctionId = auctionId
+              const response = await fetch('/api/tickets', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  ticketData: {
+                    ...ticketData,
+                    price: ticketData.price.toString() // Convert BigInt to string for JSON serialization
+                  },
+                  userAddress: connection.address
+                }),
+              })
+        
+              if (!response.ok) {
+                throw new Error('Failed to add ticket to database')
+              }
+        
+              const result = await response.json()
+              console.log('Ticket added to database:', result)
+              
               console.log('Auction created successfully with ID:', auctionId)
             }
           }

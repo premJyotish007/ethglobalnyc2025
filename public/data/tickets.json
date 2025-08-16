@@ -1,18 +1,19 @@
 [
   {
     "id": "1",
-    "eventName": "random event",
+    "eventName": "random 3",
     "eventDate": "8/23/2025",
     "venue": "NFT Marketplace",
     "section": "100",
     "row": "A",
     "seat": "15",
-    "price": "12000000",
+    "price": "8000000",
     "seller": "0xd7FeB809e8B9C52CE3C0B792506D2FE474aAE06D",
-    "tokenId": "6",
+    "tokenId": "14",
     "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
     "isListed": true,
     "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
-    "bidExpiryTime": 1755380417
+    "bidExpiryTime": 1755383327,
+    "auctionId": "9"
   }
 ]
