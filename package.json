@@ -6,7 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "settlement:start": "node scripts/settlement-scheduler.js",
+    "settlement:status": "node scripts/settlement-cli.js status",
+    "settlement:list": "node scripts/settlement-cli.js list",
+    "settlement:logs": "node scripts/settlement-cli.js logs",
+    "settlement:cleanup": "node scripts/settlement-cli.js cleanup"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.4.0",
