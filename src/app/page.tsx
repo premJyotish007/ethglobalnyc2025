@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { WalletConnect } from '@/components/tickets/WalletConnect'
 import { TicketGrid } from '@/components/tickets/TicketGrid'
 import { BidModal } from '@/components/tickets/BidModal'
@@ -31,6 +31,39 @@ export default function Home() {
   const [isBidModalOpen, setIsBidModalOpen] = useState(false)
   const [isSellModalOpen, setIsSellModalOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [bidRefreshKey, setBidRefreshKey] = useState(0)
+  const [userBids, setUserBids] = useState<any[]>([])
+
+  // Function to refresh bid data
+  const refreshBids = () => {
+    setBidRefreshKey(prev => prev + 1)
+    fetchUserBids()
+  }
+
+  // Fetch user's bids
+  const fetchUserBids = async () => {
+    if (!connection.address) {
+      setUserBids([])
+      return
+    }
+
+    try {
+      const response = await fetch('/api/bids')
+      if (response.ok) {
+        const data = await response.json()
+        const userBids = data.bids.filter((bid: any) => bid.bidder === connection.address)
+        setUserBids(userBids)
+      }
+    } catch (error) {
+      console.error('Error fetching user bids:', error)
+    }
+  }
+
+  // Get current user's bid for selected ticket
+  const getCurrentUserBid = () => {
+    if (!selectedTicket || !connection.address) return undefined
+    return userBids.find(bid => bid.tokenId === selectedTicket.tokenId)
+  }
 
   // Create handle functions using utility
   const {
@@ -38,7 +71,8 @@ export default function Home() {
     handleBuy,
     handlePlaceBid,
     handleSellTicket,
-    handleRemoveTicket
+    handleRemoveTicket,
+    handleCancelBid
   } = createHandleFunctions({
     connection,
     tickets,
@@ -49,8 +83,14 @@ export default function Home() {
     setIsProcessing,
     setIsBidModalOpen,
     setSelectedTicket,
-    setIsSellModalOpen
+    setIsSellModalOpen,
+    onBidPlaced: refreshBids
   })
+
+  // Fetch user bids when connection changes
+  useEffect(() => {
+    fetchUserBids()
+  }, [connection.address])
 
   const stats = createStats(tickets)
 
@@ -165,6 +205,7 @@ export default function Home() {
         ) : (
           <>
             <TicketGrid
+              key={bidRefreshKey}
               tickets={tickets}
               onBid={handleBid}
               onBuy={handleBuy}
@@ -195,6 +236,8 @@ export default function Home() {
             setSelectedTicket(null)
           }}
           onPlaceBid={handlePlaceBid}
+          onCancelBid={handleCancelBid}
+          currentUserBid={getCurrentUserBid()}
           isLoading={isProcessing}
         />
       )}

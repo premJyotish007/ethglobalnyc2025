@@ -57,6 +57,7 @@
     "tokenId": "2",
     "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
     "isListed": true,
-    "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400"
+    "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+    "bidExpiryTime": 1755364488
   }
 ]

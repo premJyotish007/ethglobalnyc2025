@@ -8,6 +8,7 @@ A modern, decentralized platform for trading tokenized event tickets using USDC 
 - 🎫 **Tokenized Tickets**: Trade event tickets as NFTs
 - 💰 **USDC Payments**: All transactions use USDC stablecoin
 - 🏷️ **Bidding System**: Place bids on tickets or buy instantly
+- ⏰ **Bid Expiry**: Automatic 2-minute bidding window for listed tickets
 - 📱 **Responsive Design**: Modern UI that works on all devices
 - ⚡ **Real-time Updates**: Live updates for bids and transactions
 - 🛡️ **Enhanced Security**: Account abstraction provides better security and recovery
@@ -104,6 +105,31 @@ src/
 └── contracts/             # Smart contract interfaces
     └── interfaces.ts
 ```
+
+## Bid Expiry System
+
+The platform implements an automatic bid expiry system to create urgency and fair competition:
+
+### How It Works
+
+- **2-Minute Window**: When a seller lists a ticket, a 2-minute bidding window automatically starts
+- **Real-time Countdown**: Each ticket card displays a live countdown timer showing remaining time
+- **Automatic Expiry**: After 2 minutes, bidding is automatically disabled
+- **Visual Indicators**: Expired tickets show "Bidding Expired" badges and disabled bid buttons
+
+### User Experience
+
+- **Countdown Timer**: Orange timer shows minutes:seconds remaining for bidding
+- **Expired State**: Red "Bidding Ended" indicator when time expires
+- **Disabled Actions**: Bid buttons and forms are automatically disabled after expiry
+- **Buy Now Still Available**: Users can still purchase tickets at the listed price even after bidding expires
+
+### Technical Implementation
+
+- **Unix Timestamp**: `bidExpiryTime` field stores expiry as Unix timestamp
+- **Client-side Validation**: Real-time checks prevent expired bidding
+- **Server-side Persistence**: Expiry times are stored in the ticket database
+- **Automatic Updates**: Countdown timers update every second
 
 ## Usage
 

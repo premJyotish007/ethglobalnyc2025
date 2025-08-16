@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       tokenId: ticketData.tokenId,
       tokenContractAddress: CONTRACT_ADDRESS,
       isListed: true,
-      imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400"
+      imageUrl: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
+      bidExpiryTime: Math.floor(Date.now() / 1000) + (2 * 60) // 2 minutes from now in Unix timestamp
     }
 
     // Add new ticket to the array

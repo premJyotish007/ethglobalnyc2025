@@ -12,6 +12,7 @@ export interface Ticket {
   tokenId: string
   isListed: boolean
   imageUrl?: string
+  bidExpiryTime?: number // Unix timestamp when bidding expires
 }
 
 export interface Bid {
