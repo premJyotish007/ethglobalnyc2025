@@ -1,10 +1,14 @@
 // scripts/settlement-scheduler.js
 import { ethers } from 'ethers';
 import { SettlementDataManager } from './settlement-data.js';
-import contractABI from '../TicketAuction.abi.json' assert { type: 'json' };
+import fs from 'fs';
+import path from 'path';
 import dotenv from 'dotenv';
 
 dotenv.config();
+
+// Read the contract ABI from JSON file
+const contractABI = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'contracts', 'auctionDataABI.json'), 'utf8'));
 
 export class SettlementScheduler {
     constructor() {

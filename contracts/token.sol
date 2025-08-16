@@ -47,7 +47,7 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
     }
 
     /**
-     * @dev Creates new tickets for an event
+     * @dev Creates new tickets for an event - open to everyone
      * @param to Address to mint tickets to
      * @param amount Number of tickets to create
      * @param eventName Name of the event
@@ -66,7 +66,7 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
         string memory seat,
         uint256 eventDate,
         uint256 price
-    ) public onlyOwner {
+    ) public {
         require(
             eventDate > block.timestamp,
             "Event date must be in the future"
@@ -106,7 +106,64 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
     }
 
     /**
-     * @dev Batch create multiple different ticket types
+     * @dev Public minting function - allows anyone to mint tickets for themselves
+     * @param amount Number of tickets to create
+     * @param eventName Name of the event
+     * @param section Section of the venue
+     * @param row Row in the section
+     * @param seat Seat number(s) - can be range like "1-5"
+     * @param eventDate Date of the event (Unix timestamp)
+     * @param price Price per ticket in wei
+     */
+    function mintTickets(
+        uint256 amount,
+        string memory eventName,
+        string memory section,
+        string memory row,
+        string memory seat,
+        uint256 eventDate,
+        uint256 price
+    ) public {
+        require(
+            eventDate > block.timestamp,
+            "Event date must be in the future"
+        );
+        require(bytes(eventName).length > 0, "Event name cannot be empty");
+        require(bytes(section).length > 0, "Section cannot be empty");
+        require(bytes(row).length > 0, "Row cannot be empty");
+        require(bytes(seat).length > 0, "Seat cannot be empty");
+
+        uint256 tokenId = _currentTokenId;
+
+        // Store ticket information
+        ticketInfo[tokenId] = TicketInfo({
+            eventName: eventName,
+            section: section,
+            row: row,
+            seat: seat,
+            eventDate: eventDate,
+            price: price,
+            isActive: true
+        });
+
+        // Mint the tickets to the caller
+        _mint(msg.sender, tokenId, amount, "");
+
+        emit TicketCreated(
+            tokenId,
+            eventName,
+            section,
+            row,
+            seat,
+            eventDate,
+            price
+        );
+
+        _currentTokenId++;
+    }
+
+    /**
+     * @dev Batch create multiple different ticket types - open to everyone
      */
     function createBatchTickets(
         address to,
@@ -117,7 +174,7 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
         string[] memory seats,
         uint256[] memory eventDates,
         uint256[] memory prices
-    ) public onlyOwner {
+    ) public {
         require(amounts.length == eventNames.length, "Arrays length mismatch");
         require(amounts.length == sections.length, "Arrays length mismatch");
         require(amounts.length == rows.length, "Arrays length mismatch");
@@ -185,9 +242,9 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
     }
 
     /**
-     * @dev Deactivate a ticket (in case of event cancellation)
+     * @dev Deactivate a ticket (in case of event cancellation) - open to everyone
      */
-    function deactivateTicket(uint256 tokenId) public onlyOwner {
+    function deactivateTicket(uint256 tokenId) public {
         ticketInfo[tokenId].isActive = false;
         emit TicketDeactivated(tokenId);
     }
@@ -195,7 +252,9 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
     /**
      * @dev Get detailed ticket information
      */
-    function getTicketInfo(uint256 tokenId) public view returns (TicketInfo memory ticket, bool isUsed) {
+    function getTicketInfo(
+        uint256 tokenId
+    ) public view returns (TicketInfo memory ticket, bool isUsed) {
         ticket = ticketInfo[tokenId];
         isUsed = usedTickets[tokenId];
     }
@@ -243,9 +302,9 @@ contract TicketToken is ERC1155, Ownable, ERC1155Supply {
     }
 
     /**
-     * @dev Set new URI for metadata
+     * @dev Set new URI for metadata - open to everyone
      */
-    function setURI(string memory newuri) public onlyOwner {
+    function setURI(string memory newuri) public {
         _setURI(newuri);
     }
 
