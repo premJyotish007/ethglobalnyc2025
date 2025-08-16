@@ -4,10 +4,11 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./token.sol";
 
-contract TicketAuction is Ownable, ReentrancyGuard {
+contract TicketAuction is Ownable, ReentrancyGuard, IERC1155Receiver {
     // USDC token interface
     IERC20 public immutable usdcToken;
     
@@ -39,11 +40,10 @@ contract TicketAuction is Ownable, ReentrancyGuard {
     // Mapping from auction ID to auction details
     mapping(uint256 => Auction) public auctions;
     
-    // Mapping from auction ID to bidder's bid amount
-    mapping(uint256 => mapping(address => uint256)) public bids;
-    
     // Mapping from ticket ID to active auction ID
     mapping(uint256 => uint256) public ticketToAuction;
+    
+
     
     // Events
     event AuctionCreated(
@@ -209,11 +209,9 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         
         // Refund previous highest bidder if exists
         if (auction.highestBidder != address(0)) {
-            uint256 previousBid = bids[auctionId][auction.highestBidder];
+            uint256 previousBid = auction.highestBid;
             if (previousBid > 0) {
                 usdcToken.transfer(auction.highestBidder, previousBid);
-                // Clear the bid record
-                bids[auctionId][auction.highestBidder] = 0;
             }
         }
         
@@ -226,7 +224,6 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         // Update auction state
         auction.highestBidder = msg.sender;
         auction.highestBid = bidPrice;
-        bids[auctionId][msg.sender] = bidPrice;
         
         emit BidPlaced(auctionId, msg.sender, bidPrice);
     }
@@ -249,11 +246,9 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         
         // Refund previous highest bidder if exists
         if (auction.highestBidder != address(0)) {
-            uint256 previousBid = bids[auctionId][auction.highestBidder];
+            uint256 previousBid = auction.highestBid;
             if (previousBid > 0) {
                 usdcToken.transfer(auction.highestBidder, previousBid);
-                // Clear the bid record
-                bids[auctionId][auction.highestBidder] = 0;
             }
         }
         
@@ -371,26 +366,9 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         emit AuctionRefunded(auctionId, auction.seller);
     }
     
-    /**
-     * @dev Allows bidders to withdraw their bids if they are outbid
-     * @param auctionId The ID of the auction
-     */
-    function withdrawBid(uint256 auctionId) external nonReentrant {
-        uint256 bidAmount = bids[auctionId][msg.sender];
-        require(bidAmount > 0, "No bid to withdraw");
-        
-        Auction storage auction = auctions[auctionId];
-        require(
-            auction.highestBidder != msg.sender || !auction.isActive,
-            "Cannot withdraw if you are the highest bidder and auction is active"
-        );
-        
-        // Clear the bid
-        bids[auctionId][msg.sender] = 0;
-        
-        // Transfer USDC back to bidder
-        usdcToken.transfer(msg.sender, bidAmount);
-    }
+
+    
+
     
     /**
      * @dev Updates the coordinator address
@@ -412,15 +390,7 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         auction = auctions[auctionId];
     }
     
-    /**
-     * @dev Gets the current bid for a bidder on an auction
-     * @param auctionId The ID of the auction
-     * @param bidder The bidder address
-     * @return The bid amount
-     */
-    function getBid(uint256 auctionId, address bidder) external view returns (uint256) {
-        return bids[auctionId][bidder];
-    }
+
     
     /**
      * @dev Gets the active auction ID for a ticket
@@ -449,5 +419,38 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         address to
     ) external onlyOwner {
         ticketToken.safeTransferFrom(address(this), to, ticketId, amount, "");
+    }
+
+    /**
+     * @dev Required function for IERC1155Receiver
+     */
+    function onERC1155Received(
+        address operator,
+        address from,
+        uint256 id,
+        uint256 value,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @dev Required function for IERC1155Receiver
+     */
+    function onERC1155BatchReceived(
+        address operator,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata values,
+        bytes calldata data
+    ) external pure returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
+
+    /**
+     * @dev Required function for IERC165
+     */
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(IERC1155Receiver).interfaceId;
     }
 }
