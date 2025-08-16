@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./token.sol";
 
 contract TicketAuction is Ownable, ReentrancyGuard {
@@ -212,6 +212,8 @@ contract TicketAuction is Ownable, ReentrancyGuard {
             uint256 previousBid = bids[auctionId][auction.highestBidder];
             if (previousBid > 0) {
                 usdcToken.transfer(auction.highestBidder, previousBid);
+                // Clear the bid record
+                bids[auctionId][auction.highestBidder] = 0;
             }
         }
         
@@ -250,6 +252,8 @@ contract TicketAuction is Ownable, ReentrancyGuard {
             uint256 previousBid = bids[auctionId][auction.highestBidder];
             if (previousBid > 0) {
                 usdcToken.transfer(auction.highestBidder, previousBid);
+                // Clear the bid record
+                bids[auctionId][auction.highestBidder] = 0;
             }
         }
         
@@ -258,6 +262,9 @@ contract TicketAuction is Ownable, ReentrancyGuard {
             usdcToken.transferFrom(msg.sender, address(this), auction.buyNowPrice),
             "USDC transfer failed"
         );
+        
+        // Transfer USDC to seller
+        usdcToken.transfer(auction.seller, auction.buyNowPrice);
         
         // Transfer tickets to buyer
         ticketToken.safeTransferFrom(
@@ -298,6 +305,9 @@ contract TicketAuction is Ownable, ReentrancyGuard {
         auction.isSettled = true;
         
         if (auction.highestBidder != address(0)) {
+            // Transfer USDC to seller
+            usdcToken.transfer(auction.seller, auction.highestBid);
+            
             // Transfer tickets to highest bidder
             ticketToken.safeTransferFrom(
                 address(this),
