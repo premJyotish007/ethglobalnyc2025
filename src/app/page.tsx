@@ -11,8 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/hooks/useWallet'
 import { useTickets } from '@/hooks/useTickets'
 import { Ticket } from '@/types'
-import { formatUSDC } from '@/lib/utils'
 import { Ticket as TicketIcon, DollarSign, Users, TrendingUp, Plus } from 'lucide-react'
+import { createHandleFunctions, createStats } from '@/lib/utilFunctions'
 
 export default function Home() {
   const { connection } = useWallet()
@@ -32,128 +32,30 @@ export default function Home() {
   const [isSellModalOpen, setIsSellModalOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
 
-  const handleBid = (ticketId: string) => {
-    const ticket = tickets.find(t => t.id === ticketId)
-    if (ticket) {
-      setSelectedTicket(ticket)
-      setIsBidModalOpen(true)
-    }
-  }
+  // Create handle functions using utility
+  const {
+    handleBid,
+    handleBuy,
+    handlePlaceBid,
+    handleSellTicket,
+    handleRemoveTicket
+  } = createHandleFunctions({
+    connection,
+    tickets,
+    placeBid,
+    buyTicket,
+    removeTicket,
+    refreshTickets,
+    setIsProcessing,
+    setIsBidModalOpen,
+    setSelectedTicket,
+    setIsSellModalOpen
+  })
 
-  const handleBuy = async (ticketId: string) => {
-    if (!connection.address) return
-    
-    setIsProcessing(true)
-    try {
-      await buyTicket(ticketId, connection.address)
-      // Show success message
-    } catch (error) {
-      console.error('Failed to buy ticket:', error)
-      // Show error message
-    } finally {
-      setIsProcessing(false)
-    }
-  }
+  const stats = createStats(tickets)
 
-  const handlePlaceBid = async (ticketId: string, amount: bigint) => {
-    if (!connection.address) return
-    
-    setIsProcessing(true)
-    try {
-      await placeBid(ticketId, amount, connection.address)
-      setIsBidModalOpen(false)
-      setSelectedTicket(null)
-      // Show success message
-    } catch (error) {
-      console.error('Failed to place bid:', error)
-      // Show error message
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const handleSellTicket = async (ticketData: { tokenId: string; price: bigint; ticketInfo?: any }) => {
-    if (!connection.address) return
-    
-    setIsProcessing(true)
-    try {
-      // Call API to persist ticket to database
-      const response = await fetch('/api/tickets', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ticketData: {
-            ...ticketData,
-            price: ticketData.price.toString() // Convert BigInt to string for JSON serialization
-          },
-          userAddress: connection.address
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to add ticket to database')
-      }
-
-      const result = await response.json()
-      console.log('Ticket added to database:', result)
-      
-      // Refresh the tickets list to show the new ticket
-      await refreshTickets()
-      
-      setIsSellModalOpen(false)
-      // Show success message
-    } catch (error) {
-      console.error('Failed to list ticket:', error)
-      // Show error message
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const handleRemoveTicket = async (ticketId: string) => {
-    setIsProcessing(true)
-    try {
-      await removeTicket(ticketId)
-      // Show success message
-    } catch (error) {
-      console.error('Failed to remove ticket:', error)
-      // Show error message
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  const stats = [
-    {
-      label: 'Total Tickets',
-      value: tickets.length,
-      icon: TicketIcon,
-      color: 'text-blue-600'
-    },
-    {
-      label: 'Total Value',
-      value: `${formatUSDC(tickets.reduce((sum, ticket) => sum + ticket.price, BigInt(0)))} USDC`,
-      icon: DollarSign,
-      color: 'text-green-600'
-    },
-    {
-      label: 'Active Sellers',
-      value: new Set(tickets.map(t => t.seller)).size,
-      icon: Users,
-      color: 'text-purple-600'
-    },
-    {
-      label: 'Avg Price',
-      value: tickets.length > 0 
-        ? `${formatUSDC(tickets.reduce((sum, ticket) => sum + ticket.price, BigInt(0)) / BigInt(tickets.length))} USDC`
-        : '0 USDC',
-      icon: TrendingUp,
-      color: 'text-orange-600'
-    }
-  ]
-
+  // Add a quick link to the https://faucet.circle.com/ to get some testnet USDC
+  // Add a quick link to the https://sepolia.base.org/ to view the transactions
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -191,6 +93,32 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Links Section */}
+      <section className="py-4 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-center gap-6">
+            <a 
+              href="https://faucet.circle.com/" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <DollarSign className="h-4 w-4" />
+              Get Testnet USDC
+            </a>
+            <a 
+              href={`https://sepolia.basescan.org/address/${connection.address}`} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm"
+            >
+              <TrendingUp className="h-4 w-4" />
+              View Your Transactions
+            </a>
           </div>
         </div>
       </section>
