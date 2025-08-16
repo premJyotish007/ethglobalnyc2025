@@ -33,6 +33,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [bidRefreshKey, setBidRefreshKey] = useState(0)
   const [userBids, setUserBids] = useState<any[]>([])
+  const [faqOpen, setFaqOpen] = useState(false)
 
   // Function to refresh bid data
   const refreshBids = () => {
@@ -221,6 +222,38 @@ export default function Home() {
                 onRemoveTicket={handleRemoveTicket}
                 isLoading={isLoading}
               />
+            </div>
+
+            {/* FAQ Section */}
+            <div className="mt-12">
+              <h3 className="text-2xl font-bold mb-6">Frequently Asked Questions</h3>
+              <div className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <button
+                    onClick={() => setFaqOpen(!faqOpen)}
+                    className="flex items-center justify-between w-full text-left"
+                  >
+                    <span className="font-semibold">How do I know my tickets are real?</span>
+                    <Plus className={`h-5 w-5 transition-transform ${faqOpen ? 'rotate-45' : ''}`} />
+                  </button>
+                  {faqOpen && (
+                    <div className="mt-4 pt-4 border-t text-muted-foreground space-y-4">
+                      <p>
+                        We know your event is important to you. In the rare case there&apos;s an issue with your order, we&apos;ll make it right with comparable or better tickets, or your money back.
+                      </p>
+                      <div>
+                        <p className="font-semibold mb-2">What happens if someone tries to sell fake tickets on TicketBid?</p>
+                        <p>
+                          Our Seller Policies require sellers to only list valid tickets, provide accurate information in the ticket listing, and fulfill orders with the correct tickets in time for the event.
+                        </p>
+                        <p className="mt-2">
+                          If a seller does not follow these policies, we&apos;ll step in to obtain the correct tickets from the seller, or offer you replacement tickets or a full refund. If the seller cannot provide the correct tickets, their account will be charged and/or suspended to protect marketplace quality.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </>
         )}
