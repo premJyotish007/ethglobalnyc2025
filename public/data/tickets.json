@@ -61,19 +61,18 @@
     "bidExpiryTime": 1755373805
   },
   {
-    "id": "5",
-    "eventName": "Weeknd Concert",
-    "eventDate": "8/23/2025",
-    "venue": "NFT Marketplace",
-    "section": "100",
-    "row": "A",
-    "seat": "15",
-    "price": "10000000",
-    "seller": "0xd7FeB809e8B9C52CE3C0B792506D2FE474aAE06D",
-    "tokenId": "2",
+    "id": "6",
+    "eventName": "Drake - It's All A Blur Tour",
+    "eventDate": "9/15/2025",
+    "venue": "Mercedes-Benz Stadium",
+    "section": "200",
+    "row": "C",
+    "seat": "8",
+    "price": "7500000",
+    "seller": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
+    "tokenId": "12348",
     "tokenContractAddress": "0xEc05b206132935F27A5e150c365eEE8D0906cE8b",
     "isListed": true,
-    "imageUrl": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400",
-    "bidExpiryTime": 1755373861
+    "imageUrl": "https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=400"
   }
 ]

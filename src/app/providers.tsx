@@ -2,21 +2,23 @@
 
 import { PrivyProvider } from '@privy-io/react-auth'
 import { WagmiProvider, createConfig, http } from 'wagmi'
-import { mainnet, sepolia } from 'wagmi/chains'
+import { mainnet, sepolia, base, baseSepolia } from 'wagmi/chains'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { injected, metaMask, walletConnect } from 'wagmi/connectors'
 import { ReactNode } from 'react'
 
 const config = createConfig({
-  chains: [mainnet, sepolia],
+  chains: [mainnet, sepolia, base, baseSepolia],
   connectors: [
     injected(),
     metaMask(),
-    walletConnect({ projectId: 'YOUR_WALLET_CONNECT_PROJECT_ID' }),
+    // walletConnect({ projectId: 'YOUR_WALLET_CONNECT_PROJECT_ID' }), // Commented out until you have a project ID
   ],
   transports: {
     [mainnet.id]: http(),
     [sepolia.id]: http(),
+    [base.id]: http('https://mainnet.base.org'),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
   },
 })
 
@@ -39,8 +41,8 @@ export function Providers({ children }: ProvidersProps) {
               accentColor: '#3b82f6',
               showWalletLoginFirst: false,
             },
-            defaultChain: mainnet,
-            supportedChains: [mainnet, sepolia],
+            defaultChain: baseSepolia, // Set Base Sepolia as default for your marketplace
+            supportedChains: [mainnet, sepolia, base, baseSepolia],
             embeddedWallets: {
               createOnLogin: 'users-without-wallets',
             },
