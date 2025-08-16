@@ -2,8 +2,6 @@
 
 # dependencies
 /node_modules
-/artifacts
-/cache
 /.pnp
 .pnp.*
 .yarn/*
@@ -41,3 +39,31 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# settlement system data files
+/settlement-data/
+settlement-data/*.json
+
+# hardhat artifacts and cache
+/cache/
+/artifacts/
+/typechain-types/
+
+# deployment artifacts
+deployAuction*.js
+mintTicket.js
+
+# generated contract files
+TicketAuction.abi.json
+TicketAuction.abi.simple.json
+TicketAuction.contract.json
+TicketAuction.types.ts
+TicketAuction.README.md
+
+# logs
+*.log
+logs/
+
+# temporary files
+*.tmp
+*.temp
