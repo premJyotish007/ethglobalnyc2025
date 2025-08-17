@@ -1,89 +1,104 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Verifying deployed contracts on Base Sepolia...");
-  
+  console.log("🔍 Verifying deployed contracts on Base Sepolia...");
+
+  // Get provider for Base Sepolia
+  const provider = new ethers.JsonRpcProvider("https://sepolia.base.org");
+
   // Contract addresses from deployment
-  const mockUSDCAddress = "0x01d180E448AC87CeE5dcB2C961ceB227393a94E3";
+  const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // Real USDC
   const ticketTokenAddress = "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad";
-  const auctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
-  
-  try {
-    // Get provider for Base Sepolia
-    const provider = new ethers.JsonRpcProvider("https://sepolia.base.org");
+  const ticketAuctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+
+  console.log("\n1. Checking USDC contract...");
+  const usdcCode = await provider.getCode(usdcAddress);
+  if (usdcCode === "0x") {
+    console.log("❌ USDC contract not found at:", usdcAddress);
+  } else {
+    console.log("✅ USDC contract found at:", usdcAddress);
+    console.log("   Code length:", usdcCode.length, "bytes");
     
-    // Check if contracts exist by getting their code
-    console.log("\n1. Checking MockUSDC contract...");
-    const mockUSDCCode = await provider.getCode(mockUSDCAddress);
-    if (mockUSDCCode === "0x") {
-      console.log("❌ MockUSDC contract not found at:", mockUSDCAddress);
-    } else {
-      console.log("✅ MockUSDC contract found at:", mockUSDCAddress);
-      console.log("   Code length:", mockUSDCCode.length, "bytes");
-    }
-    
-    console.log("\n2. Checking TicketToken contract...");
-    const ticketTokenCode = await provider.getCode(ticketTokenAddress);
-    if (ticketTokenCode === "0x") {
-      console.log("❌ TicketToken contract not found at:", ticketTokenAddress);
-    } else {
-      console.log("✅ TicketToken contract found at:", ticketTokenAddress);
-      console.log("   Code length:", ticketTokenCode.length, "bytes");
-    }
-    
-    console.log("\n3. Checking TicketAuction contract...");
-    const auctionCode = await provider.getCode(auctionAddress);
-    if (auctionCode === "0x") {
-      console.log("❌ TicketAuction contract not found at:", auctionAddress);
-    } else {
-      console.log("✅ TicketAuction contract found at:", auctionAddress);
-      console.log("   Code length:", auctionCode.length, "bytes");
-    }
-    
-    // Try to interact with the auction contract
-    if (auctionCode !== "0x") {
-      console.log("\n4. Testing auction contract interaction...");
-      try {
-        // Basic ABI for testing
-        const basicABI = [
-          "function usdcToken() view returns (address)",
-          "function ticketToken() view returns (address)",
-          "function coordinator() view returns (address)"
-        ];
-        
-        const auctionContract = new ethers.Contract(auctionAddress, basicABI, provider);
-        
-        const usdcToken = await auctionContract.usdcToken();
-        const ticketToken = await auctionContract.ticketToken();
-        const coordinator = await auctionContract.coordinator();
-        
-        console.log("✅ Auction contract is responsive:");
-        console.log("   USDC Token:", usdcToken);
-        console.log("   Ticket Token:", ticketToken);
-        console.log("   Coordinator:", coordinator);
-        
-        // Verify these addresses match our deployment
-        console.log("\n5. Verifying contract relationships...");
-        if (usdcToken.toLowerCase() === mockUSDCAddress.toLowerCase()) {
-          console.log("✅ USDC address matches deployment");
-        } else {
-          console.log("❌ USDC address mismatch. Expected:", mockUSDCAddress, "Got:", usdcToken);
-        }
-        
-        if (ticketToken.toLowerCase() === ticketTokenAddress.toLowerCase()) {
-          console.log("✅ Ticket token address matches deployment");
-        } else {
-          console.log("❌ Ticket token address mismatch. Expected:", ticketTokenAddress, "Got:", ticketToken);
-        }
-        
-      } catch (error) {
-        console.log("❌ Error interacting with auction contract:", error.message);
+    // Check if it's a real USDC contract by calling decimals()
+    try {
+      const usdcABI = ["function decimals() view returns (uint8)"];
+      const usdcContract = new ethers.Contract(usdcAddress, usdcABI, provider);
+      const decimals = await usdcContract.decimals();
+      console.log("   Decimals:", decimals);
+      if (decimals === 6) {
+        console.log("   ✅ Confirmed: This is a real USDC contract (6 decimals)");
+      } else {
+        console.log("   ⚠️  Warning: Unexpected decimals for USDC");
       }
+    } catch (error) {
+      console.log("   ❌ Could not verify USDC decimals:", error.message);
     }
-    
-  } catch (error) {
-    console.error("❌ Error verifying contracts:", error);
   }
+
+  console.log("\n2. Checking TicketToken contract...");
+  const ticketTokenCode = await provider.getCode(ticketTokenAddress);
+  if (ticketTokenCode === "0x") {
+    console.log("❌ TicketToken contract not found at:", ticketTokenAddress);
+  } else {
+    console.log("✅ TicketToken contract found at:", ticketTokenAddress);
+    console.log("   Code length:", ticketTokenCode.length, "bytes");
+  }
+
+  console.log("\n3. Checking TicketAuction contract...");
+  const ticketAuctionCode = await provider.getCode(ticketAuctionAddress);
+  if (ticketAuctionCode === "0x") {
+    console.log("❌ TicketAuction contract not found at:", ticketAuctionAddress);
+  } else {
+    console.log("✅ TicketAuction contract found at:", ticketAuctionAddress);
+    console.log("   Code length:", ticketAuctionCode.length, "bytes");
+    
+    // Verify the USDC address in the auction contract
+    try {
+      const auctionABI = ["function usdcToken() view returns (address)"];
+      const auctionContract = new ethers.Contract(ticketAuctionAddress, auctionABI, provider);
+      const usdcToken = await auctionContract.usdcToken();
+      console.log("   USDC token address in auction:", usdcToken);
+      
+      if (usdcToken.toLowerCase() === usdcAddress.toLowerCase()) {
+        console.log("   ✅ USDC address matches expected address");
+      } else {
+        console.log("   ❌ USDC address mismatch. Expected:", usdcAddress, "Got:", usdcToken);
+      }
+    } catch (error) {
+      console.log("   ❌ Could not verify USDC address in auction contract:", error.message);
+    }
+  }
+
+  console.log("\n4. Checking contract interactions...");
+  
+  // Check if auction contract can receive ERC1155 tokens
+  try {
+    const erc1155ABI = ["function supportsInterface(bytes4) view returns (bool)"];
+    const auctionContract = new ethers.Contract(ticketAuctionAddress, erc1155ABI, provider);
+    
+    // IERC1155Receiver interface ID
+    const interfaceId = "0x4e2312e0";
+    const supportsERC1155 = await auctionContract.supportsInterface(interfaceId);
+    
+    if (supportsERC1155) {
+      console.log("✅ Auction contract supports ERC1155 receiver interface");
+    } else {
+      console.log("❌ Auction contract does not support ERC1155 receiver interface");
+    }
+  } catch (error) {
+    console.log("❌ Could not verify ERC1155 support:", error.message);
+  }
+
+  console.log("\n=== Verification Summary ===");
+  console.log("Network: Base Sepolia");
+  console.log("USDC:", usdcAddress);
+  console.log("TicketToken:", ticketTokenAddress);
+  console.log("TicketAuction:", ticketAuctionAddress);
+  
+  console.log("\n🔗 Base Sepolia Explorer Links:");
+  console.log("USDC:", `https://sepolia.basescan.org/address/${usdcAddress}`);
+  console.log("TicketToken:", `https://sepolia.basescan.org/address/${ticketTokenAddress}`);
+  console.log("TicketAuction:", `https://sepolia.basescan.org/address/${ticketAuctionAddress}`);
 }
 
 main()

@@ -53,21 +53,87 @@ export function useAuctions() {
     setError(null)
     
     try {
-      // In real implementation, this would call the smart contract
-      // For now, we'll use mock data
-      setAuctions(mockAuctions)
+      // Create provider for blockchain interaction
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      
+      // Create auction contract instance
+      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, provider)
+      
+      // Create ticket contract instance to get ticket info
+      const ticketContract = new ethers.Contract("0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad", [
+        "function getTicketInfo(uint256 tokenId) view returns (tuple(string eventName, string section, string row, string seat, uint256 eventDate, uint256 price, bool isActive) ticket, bool isUsed)"
+      ], provider)
+      
+      const activeAuctions: Auction[] = []
+      
+      // Check first 10 auction IDs for active auctions
+      for (let i = 1; i <= 10; i++) {
+        try {
+          const auction = await auctionContract.getAuction(i)
+          
+          // Check if auction exists and is active
+          if (auction && auction.auctionId.toString() !== "0" && auction.isActive && !auction.isSettled) {
+            // Get ticket info for this auction
+            let ticketInfo
+            try {
+              const [ticketData, isUsed] = await ticketContract.getTicketInfo(auction.ticketId)
+              ticketInfo = {
+                eventName: ticketData.eventName,
+                section: ticketData.section,
+                row: ticketData.row,
+                seat: ticketData.seat,
+                eventDate: new Date(Number(ticketData.eventDate) * 1000).toLocaleDateString(),
+                price: ethers.formatUnits(ticketData.price, 6),
+                isActive: ticketData.isActive
+              }
+            } catch (error) {
+              console.log(`Could not get ticket info for token ID ${auction.ticketId}:`, error)
+            }
+
+            activeAuctions.push({
+              auctionId: Number(auction.auctionId),
+              ticketId: auction.ticketId,
+              ticketCount: auction.ticketCount,
+              startPrice: auction.startPrice,
+              buyNowPrice: auction.buyNowPrice,
+              minIncrement: auction.minIncrement,
+              expiryTime: auction.expiryTime,
+              seller: auction.seller,
+              highestBidder: auction.highestBidder,
+              highestBid: auction.highestBid,
+              isActive: auction.isActive,
+              isSettled: auction.isSettled
+            })
+          }
+        } catch (error) {
+          // Auction doesn't exist or error occurred, continue to next
+          continue
+        }
+      }
+      
+      setAuctions(activeAuctions)
       
       // Load user bids if connected
       if (connection.address) {
         const bids = new Map<number, bigint>()
-        // Mock user bids - in real implementation, query the contract
-        if (connection.address.toLowerCase() === "0x0987654321098765432109876543210987654321") {
-          bids.set(2, BigInt(150000)) // 0.15 USDC bid on auction 2
+        // Query real user bids from the contract
+        for (const auction of activeAuctions) {
+          try {
+            const userBid = await auctionContract.getBid(auction.auctionId, connection.address)
+            if (userBid.toString() !== "0") {
+              bids.set(auction.auctionId, userBid)
+            }
+          } catch (error) {
+            // User has no bid on this auction
+          }
         }
         setUserBids(bids)
       }
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load auctions')
+      // Fallback to mock data if blockchain fails
+      setAuctions(mockAuctions)
     } finally {
       setIsLoading(false)
     }
@@ -140,29 +206,42 @@ export function useAuctions() {
     setError(null)
 
     try {
-      // In real implementation, this would:
-      // 1. Check USDC allowance
-      // 2. Call the bid() function on the auction contract
-      // 3. Wait for transaction confirmation
+      // Create provider and signer for blockchain interaction
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
       
-      // For now, simulate the bid
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate transaction time
+      // Create auction contract instance
+      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, signer)
       
-      // Update local state
-      setAuctions(prev => prev.map(auction => {
-        if (auction.auctionId === auctionId) {
-          return {
-            ...auction,
-            highestBid: bidAmount,
-            highestBidder: connection.address
-          }
-        }
-        return auction
-      }))
-
-      // Update user bids
-      setUserBids(prev => new Map(prev).set(auctionId, bidAmount))
-
+      // Create USDC contract instance for allowance check
+      const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      const usdcABI = [
+        "function allowance(address owner, address spender) view returns (uint256)",
+        "function approve(address spender, uint256 amount) returns (bool)"
+      ]
+      const usdcContract = new ethers.Contract(usdcAddress, usdcABI, signer)
+      
+      // Check USDC allowance for auction contract
+      const allowance = await usdcContract.allowance(connection.address, AUCTION_CONTRACT_ADDRESS)
+      
+      if (allowance < bidAmount) {
+        console.log('Approving USDC spending...')
+        const approveTx = await usdcContract.approve(AUCTION_CONTRACT_ADDRESS, bidAmount)
+        await approveTx.wait()
+        console.log('USDC approved for auction contract')
+      }
+      
+      // Place the bid on the blockchain
+      console.log(`Placing bid of ${ethers.formatUnits(bidAmount, 6)} USDC on auction ${auctionId}...`)
+      const bidTx = await auctionContract.bid(auctionId, bidAmount)
+      
+      // Wait for transaction confirmation
+      const receipt = await bidTx.wait()
+      console.log('Bid placed successfully! Transaction hash:', bidTx.hash)
+      
+      // Refresh auctions to get updated blockchain state
+      await loadAuctions()
+      
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to place bid')
@@ -170,7 +249,7 @@ export function useAuctions() {
     } finally {
       setIsLoading(false)
     }
-  }, [connection])
+  }, [connection, loadAuctions])
 
   // Buy now (execute buy now price)
   const buyNow = useCallback(async (auctionId: number) => {
@@ -182,23 +261,46 @@ export function useAuctions() {
     setError(null)
 
     try {
-      // In real implementation, this would call the buyNow() function
-      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate transaction time
+      // Create provider and signer for blockchain interaction
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner()
       
-      // Update local state
-      setAuctions(prev => prev.map(auction => {
-        if (auction.auctionId === auctionId) {
-          return {
-            ...auction,
-            isActive: false,
-            isSettled: true,
-            highestBidder: connection.address,
-            highestBid: auction.buyNowPrice
-          }
-        }
-        return auction
-      }))
-
+      // Create auction contract instance
+      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, signer)
+      
+      // Create USDC contract instance for allowance check
+      const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+      const usdcABI = [
+        "function allowance(address owner, address spender) view returns (uint256)",
+        "function approve(address spender, uint256 amount) returns (bool)"
+      ]
+      const usdcContract = new ethers.Contract(usdcAddress, usdcABI, signer)
+      
+      // Get auction details to know the buy now price
+      const auction = await auctionContract.getAuction(auctionId)
+      const buyNowPrice = auction.buyNowPrice
+      
+      // Check USDC allowance for auction contract
+      const allowance = await usdcContract.allowance(connection.address, AUCTION_CONTRACT_ADDRESS)
+      
+      if (allowance < buyNowPrice) {
+        console.log('Approving USDC spending...')
+        const approveTx = await usdcContract.approve(AUCTION_CONTRACT_ADDRESS, buyNowPrice)
+        await approveTx.wait()
+        console.log('USDC approved for auction contract')
+      }
+      
+      // Execute buy now on the blockchain
+      console.log(`Executing buy now for ${ethers.formatUnits(buyNowPrice, 6)} USDC on auction ${auctionId}...`)
+      const buyNowTx = await auctionContract.buyNow(auctionId)
+      
+      // Wait for transaction confirmation
+      const receipt = await buyNowTx.wait()
+      console.log('Buy now executed successfully! Transaction hash:', buyNowTx.hash)
+      
+      // Refresh auctions to get updated blockchain state
+      await loadAuctions()
+      
       return true
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute buy now')
@@ -206,7 +308,7 @@ export function useAuctions() {
     } finally {
       setIsLoading(false)
     }
-  }, [connection])
+  }, [connection, loadAuctions])
 
   // Get auction by ID
   const getAuction = useCallback((auctionId: number) => {

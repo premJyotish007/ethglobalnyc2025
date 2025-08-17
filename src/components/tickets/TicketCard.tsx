@@ -206,9 +206,9 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid, auct
       </CardContent>
       
       <CardFooter className="flex gap-2">
-        {!isOwner && (
+        {!isOwner && (ticket as any).isBlockchainAuction && (
           <>
-            {/* Show bid button for auction tickets */}
+            {/* Show bid button for active blockchain auctions only */}
             {auction && auction.isActive && !auction.isSettled && (
               <Button 
                 onClick={() => onBid?.(ticket.id, auction.auctionId)} 
@@ -220,7 +220,7 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid, auct
               </Button>
             )}
             
-            {/* Show buy now button for auction tickets with buy now price */}
+            {/* Show buy now button for active blockchain auctions with buy now price */}
             {auction && auction.isActive && !auction.isSettled && auction.buyNowPrice > BigInt(0) && (
               <Button 
                 onClick={() => onBuy?.(ticket.id, auction.auctionId)} 
@@ -230,27 +230,14 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid, auct
                 Buy Now ({formatUSDC(auction.buyNowPrice)} USDC)
               </Button>
             )}
-            
-            {/* Show regular buy button for non-auction tickets */}
-            {!auction && ticket.isListed && (
-              <>
-                <Button 
-                  onClick={() => onBid?.(ticket.id)} 
-                  className="flex-1"
-                  variant={currentUserBid ? "default" : "outline"}
-                  disabled={isBiddingExpired}
-                >
-                  {isBiddingExpired ? 'Bidding Expired' : (currentUserBid ? 'Edit Bid' : 'Place Bid')}
-                </Button>
-                <Button 
-                  onClick={() => onBuy?.(ticket.id)} 
-                  className="flex-1"
-                >
-                  Buy Now
-                </Button>
-              </>
-            )}
           </>
+        )}
+        
+        {/* Show information for non-blockchain tickets */}
+        {!(ticket as any).isBlockchainAuction && (
+          <div className="w-full text-center text-sm text-muted-foreground p-2">
+            <Badge variant="secondary">Demo Ticket - Not Available for Trading</Badge>
+          </div>
         )}
       </CardFooter>
     </Card>

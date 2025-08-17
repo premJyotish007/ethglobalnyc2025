@@ -205,6 +205,10 @@ export default function Home() {
             <p className="text-muted-foreground mt-2">
               Browse and bid on tokenized event tickets
             </p>
+            {/* Debug info */}
+            <div className="text-xs text-muted-foreground mt-1">
+              Blockchain Auctions: {activeAuctions.length} | Dummy Tickets: {dummyTickets.length}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             {connection.isConnected && (
@@ -253,7 +257,7 @@ export default function Home() {
                   eventDate: auction.ticketInfo?.eventDate || 'Unknown',
                   price: auction.startPrice,
                   seller: auction.seller,
-                  auctionId: auction.auctionId,
+                  auctionId: parseInt(auction.auctionId), // Convert to number for auction lookup
                   startPrice: auction.startPrice,
                   buyNowPrice: auction.buyNowPrice,
                   minIncrement: auction.minIncrement,
@@ -261,7 +265,8 @@ export default function Home() {
                   highestBid: auction.highestBid,
                   highestBidder: auction.highestBidder,
                   isBlockchainAuction: true, // Flag to identify blockchain auctions
-                  tokenContractAddress: "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad" // From deployment info
+                  tokenContractAddress: "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad", // From deployment info
+                  isListed: true // Mark as listed since it's in an auction
                 })),
                 // Add dummy tickets
                 ...dummyTickets.map(ticket => ({

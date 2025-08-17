@@ -69,7 +69,7 @@ export function TicketGrid({ tickets, onBid, onBuy, currentUserAddress, isLoadin
   // Helper function to get auction for a ticket
   const getAuctionForTicket = (ticket: Ticket): Auction | undefined => {
     return auctions.find(auction => 
-      auction.ticketId === BigInt(ticket.tokenId) && auction.isActive
+      auction.ticketId.toString() === ticket.tokenId && auction.isActive
     )
   }
 
@@ -140,6 +140,11 @@ export function TicketGrid({ tickets, onBid, onBuy, currentUserAddress, isLoadin
         {tickets.map((ticket) => {
           const auction = getAuctionForTicket(ticket)
           const userBid = auction ? getUserBid(auction.auctionId) : getUserBidForTicket(ticket)
+          
+          // Debug logging
+          if (ticket.isBlockchainAuction) {
+            console.log('Blockchain ticket:', ticket.id, 'auction:', auction)
+          }
           
           return (
             <TicketCard

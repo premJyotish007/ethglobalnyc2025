@@ -1,258 +1,137 @@
-# Ticket Auction System Setup Guide - Base Sepolia
+# ETHGlobal NYC 2025 Ticket Auction Setup
 
-This guide will help you set up and use the complete ticket auction system for ETHGlobal NYC 2025 on Base Sepolia testnet.
+This document outlines the setup process for the ticket auction system deployed on Base Sepolia testnet.
 
-## 🏗️ System Architecture
+## Prerequisites
 
-The system consists of two main smart contracts:
+- Node.js 18+ installed
+- MetaMask or similar wallet with Base Sepolia network configured
+- Some ETH on Base Sepolia for gas fees
+- Some USDC on Base Sepolia for bidding (get from faucet)
 
-1. **TicketToken** (ERC1155) - Manages ticket creation, minting, and transfer
-2. **TicketAuction** - Handles auction creation, bidding, and settlement
+## Network Configuration
 
-## 🚀 Quick Start
+### Base Sepolia Testnet
+- **Network Name**: Base Sepolia
+- **RPC URL**: `https://sepolia.base.org`
+- **Chain ID**: `84532`
+- **Currency Symbol**: ETH
+- **Block Explorer**: `https://sepolia.basescan.org`
 
-### 1. Deploy Contracts
+### USDC Token
+- **Contract Address**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+- **Decimals**: 6
+- **Faucet**: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet
 
+## Setup Steps
+
+### 1. Install Dependencies
 ```bash
-# Deploy all contracts (MockUSDC, TicketToken, TicketAuction) to Base Sepolia
-npx hardhat run scripts/deploy-auction.ts --network base-sepolia
+npm install
+```
 
-# Or deploy individually
+### 2. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+PRIVATE_KEY=your_private_key_here
+BASESCAN_API_KEY=your_basescan_api_key_here
+NEXT_PUBLIC_AUCTION_CONTRACT_ADDRESS=0x... # TicketAuction address
+NEXT_PUBLIC_TICKET_CONTRACT_ADDRESS=0x... # TicketToken address
+NEXT_PUBLIC_USDC_CONTRACT_ADDRESS=0x036CbD53842c5426634e7929541eC2318f3dCF7e # Real USDC address
+```
+
+### 3. Deploy Contracts
+Deploy all contracts (TicketToken, TicketAuction) to Base Sepolia:
+```bash
 npx hardhat run scripts/deploy-auction.cjs --network base-sepolia
 ```
 
-### 2. Update Environment Variables
+This will:
+- Deploy TicketToken contract
+- Deploy TicketAuction contract with real USDC address
+- Mint some test tickets
+- Save deployment addresses to `deployment-info.json`
 
-Create a `.env.local` file in your project root:
+### 4. Update Environment Variables
+After deployment, update your `.env` file with the new contract addresses from `deployment-info.json`.
 
-```env
-NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS=0x... # TicketToken address
-NEXT_PUBLIC_AUCTION_CONTRACT_ADDRESS=0x... # TicketAuction address
-NEXT_PUBLIC_USDC_CONTRACT_ADDRESS=0x... # MockUSDC address
-PRIVATE_KEY=your_private_key_here # For contract deployment
-BASESCAN_API_KEY=your_basescan_api_key # For contract verification
+### 5. Verify Contracts (Optional)
+Verify your contracts on Base Sepolia:
+```bash
+npx hardhat run scripts/verify-contracts.cjs --network base-sepolia
 ```
 
-### 3. Start the Frontend
+### 6. Get Test USDC
+Visit the Base Sepolia faucet to get test USDC:
+- **Coinbase Faucet**: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet
+- **Alternative**: https://faucet.circle.com/
 
+### 7. Approve USDC Spending
+Before bidding, approve the auction contract to spend your USDC:
+```bash
+npx hardhat run scripts/approve-usdc.cjs --network base-sepolia
+```
+
+**Note**: Update the auction contract address in the script first.
+
+### 8. Start the Frontend
 ```bash
 npm run dev
 ```
 
-## 📋 Complete Workflow
+## Contract Addresses
 
-### Step 1: Mint Tickets
+After deployment, your contracts will be deployed at:
+- **TicketToken**: `0x...` (ERC1155 ticket contract)
+- **TicketAuction**: `0x...` (Auction contract)
+- **USDC**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e` (Real USDC)
 
-First, you need to mint tickets using the TicketToken contract:
+## Testing the System
 
+### 1. Check Balances
 ```bash
-# Using the script on Base Sepolia
-npx hardhat run scripts/mint-tickets.js --network base-sepolia
-
-# Or using Hardhat console
-npx hardhat console --network base-sepolia
+npx hardhat run scripts/check-usdc-balance.cjs --network base-sepolia
+npx hardhat run scripts/check-tickets.cjs --network base-sepolia
 ```
 
-**Script Parameters:**
-- `eventName`: "ETHGlobal NYC 2025"
-- `section`: "VIP"
-- `row`: "A"
-- `seat`: "1-5"
-- `eventDate`: 30 days from now
-- `price`: 100 USDC (6 decimals)
-- `amount`: 5 tickets
-
-### Step 2: Create Auction
-
-Once you have tickets, create an auction:
-
+### 2. Create an Auction
 ```bash
-# Using the script on Base Sepolia
-npx hardhat run scripts/create-auction.js --network base-sepolia
-
-# Or using Hardhat console
-npx hardhat console --network base-sepolia
+npx hardhat run scripts/create-auction.cjs --network base-sepolia
 ```
 
-**Auction Parameters:**
-- `ticketId`: The token ID of your ticket
-- `ticketCount`: Number of tickets to auction
-- `startPrice`: Starting bid price (e.g., 50 USDC)
-- `buyNowPrice`: Buy now price (e.g., 200 USDC)
-- `minIncrement`: Minimum bid increment (e.g., 5 USDC)
-- `expiryTime`: Auction duration (e.g., 7 days)
+### 3. Place Bids
+Use the frontend to place bids on auctions.
 
-### Step 3: Frontend Integration
-
-The frontend automatically:
-1. Loads your tickets from the blockchain
-2. Shows auction status and details
-3. Allows creating new auctions
-4. Displays current bids and auction progress
-
-## 🔧 Smart Contract Functions
-
-### TicketToken Contract
-
-```solidity
-// Mint new tickets (owner only)
-function createTickets(
-    address to,
-    uint256 amount,
-    string memory eventName,
-    string memory section,
-    string memory row,
-    string memory seat,
-    uint256 eventDate,
-    uint256 price
-) public onlyOwner
-
-// Check ticket balance
-function balanceOf(address account, uint256 id) view returns (uint256)
-
-// Get ticket information
-function getTicketInfo(uint256 tokenId) view returns (TicketInfo memory, bool)
+### 4. Check Auction Status
+```bash
+npx hardhat run scripts/check-auctions.cjs --network base-sepolia
 ```
 
-### TicketAuction Contract
+## Important Notes
 
-```solidity
-// Create a new auction
-function createAuction(
-    uint256 ticketId,
-    uint256 ticketCount,
-    uint256 startPrice,
-    uint256 buyNowPrice,
-    uint256 minIncrement,
-    uint256 expiryTime
-) external returns (uint256 auctionId)
+1. **Real USDC**: The system now uses the real Base Sepolia USDC contract, not a mock token
+2. **No Minting**: You cannot mint USDC - you must get it from faucets
+3. **Gas Fees**: Ensure you have sufficient ETH for gas fees on Base Sepolia
+4. **Network**: Always ensure you're connected to Base Sepolia testnet
 
-// Place a bid
-function bid(uint256 auctionId, uint256 bidPrice) external
-
-// Buy now
-function buyNow(uint256 auctionId) external
-
-// Settle expired auction (coordinator only)
-function settle(uint256 auctionId) external onlyCoordinator
-
-// Refund tickets (seller only)
-function refund(uint256 ticketId) external
-```
-
-## 💰 USDC Integration
-
-The system uses USDC for all payments:
-
-1. **MockUSDC** for testing (automatically minted to deployer)
-2. **Real USDC** for production (Base Sepolia testnet)
-
-### Getting Testnet Assets
-
-- **Base Sepolia ETH**: https://www.coinbase.com/faucets/base-ethereum-goerli-faucet
-- **Circle Faucet**: https://faucet.circle.com/
-- **Base Sepolia RPC**: https://sepolia.base.org
-
-## 🎯 Frontend Features
-
-### Ticket Management
-- View all your tickets
-- See ticket details (event, section, row, seat, price)
-- Check ticket status (active, used, inactive)
-
-### Auction Creation
-- Select tickets to auction
-- Set starting price, buy now price, and bid increment
-- Choose auction duration
-- Automatic approval and transfer to auction contract
-
-### Auction Monitoring
-- Real-time auction status
-- Current highest bid
-- Time remaining
-- Bidder information
-
-### Bidding Interface
-- Place bids with USDC
-- Automatic USDC approval
-- Bid validation and feedback
-
-## 🚨 Important Notes
-
-### Gas Fees
-- All transactions require gas fees (ETH on Base Sepolia)
-- USDC transfers are separate from gas fees
-- Batch operations can save gas
-- Base Sepolia gas fees are typically lower than Ethereum mainnet
-
-### Approvals
-- First-time users need to approve ticket transfers
-- USDC spending requires separate approval
-- Approvals are one-time per contract
-
-### Security
-- Only ticket owners can create auctions
-- Bidders cannot bid on their own auctions
-- Sellers can refund tickets if no bids exist
-
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
-1. **"Insufficient ticket balance"**
-   - Make sure you own the tickets you're trying to auction
-   - Check token ID and balance
+1. **Insufficient USDC**: Get test USDC from the faucet
+2. **Insufficient ETH**: Get test ETH from the faucet for gas fees
+3. **Wrong Network**: Ensure MetaMask is connected to Base Sepolia
+4. **Contract Not Found**: Verify contracts are deployed and addresses are correct
 
-2. **"USDC transfer failed"**
-   - Ensure you have enough USDC
-   - Check USDC approval for auction contract
+### Getting Help
 
-3. **"Auction not active"**
-   - Auction may have expired
-   - Check auction status and expiry time
+- Check the Base Sepolia explorer for transaction status
+- Verify contract addresses in `deployment-info.json`
+- Ensure all environment variables are set correctly
 
-4. **"Only coordinator can call this function"**
-   - Auction settlement requires coordinator role
-   - Contact contract owner to set coordinator
+## Security Notes
 
-### Debug Commands
-
-```bash
-# Check contract state on Base Sepolia
-npx hardhat console --network base-sepolia
-
-# View auction details
-const auction = await TicketAuction.attach("0x...").getAuction(1)
-console.log(auction)
-
-# Check ticket balance
-const balance = await TicketToken.attach("0x...").balanceOf("0x...", 1)
-console.log(balance.toString())
-```
-
-## 📚 Additional Resources
-
-- **Base Sepolia Explorer**: https://sepolia.basescan.org/
-- **Base Sepolia RPC**: https://sepolia.base.org
-- **Hardhat Documentation**: https://hardhat.org/docs
-- **OpenZeppelin Contracts**: https://docs.openzeppelin.com/contracts/
-- **Ethers.js**: https://docs.ethers.org/
-
-## 🎉 Next Steps
-
-1. Deploy contracts to Base Sepolia testnet
-2. Mint test tickets
-3. Create your first auction
-4. Test bidding functionality
-5. Deploy to Base mainnet when ready
-
-## 🌐 Network Information
-
-- **Network Name**: Base Sepolia
-- **Chain ID**: 84532
-- **RPC URL**: https://sepolia.base.org
-- **Explorer**: https://sepolia.basescan.org/
-- **Currency**: ETH (for gas fees)
-- **Testnet**: Yes
-
-Happy auctioning on Base Sepolia! 🎫✨
+- Never share your private key
+- Use testnet for development only
+- Real USDC on mainnet has real value
+- Test thoroughly before mainnet deployment
