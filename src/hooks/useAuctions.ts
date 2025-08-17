@@ -1,219 +1,254 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useWallet } from './useWallet'
+import { Ticket, Auction } from '@/types'
+import { TicketAuctionContract } from '@/contracts/interfaces'
+import { AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI } from '@/lib/contract'
 import { ethers } from 'ethers'
-import { AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract'
-import { useToast } from './useToast'
-
-export interface CreateAuctionParams {
-  tokenId: string
-  startPrice: bigint
-  buyNowPrice: bigint
-  minIncrement: bigint
-  expiryTime: bigint
-  ticketInfo?: any
-}
-
-export interface BidParams {
-  auctionId: string
-  bidAmount: bigint
-}
 
 export function useAuctions() {
+  const { connection } = useWallet()
+  const [auctions, setAuctions] = useState<Auction[]>([])
+  const [userBids, setUserBids] = useState<Map<number, bigint>>(new Map())
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isCreatingAuction, setIsCreatingAuction] = useState(false)
-  const [isBidding, setIsBidding] = useState(false)
-  const { toast } = useToast()
 
-  const createAuction = async (params: CreateAuctionParams) => {
-    if (!window.ethereum) {
-      toast.error("Error", "Please connect your wallet first")
-      return
+  // Mock data for now - in real implementation, this would come from the blockchain
+  const mockAuctions: Auction[] = [
+    {
+      auctionId: 1,
+      ticketId: BigInt(1),
+      ticketCount: BigInt(1),
+      startPrice: BigInt(300000), // 0.3 USDC (6 decimals) - ALLOWED!
+      buyNowPrice: BigInt(500000), // 0.5 USDC
+      minIncrement: BigInt(10000), // 0.01 USDC
+      expiryTime: BigInt(Math.floor(Date.now() / 1000) + 86400), // 24 hours from now
+      seller: "0x1234567890123456789012345678901234567890",
+      highestBidder: "0x0000000000000000000000000000000000000000",
+      highestBid: BigInt(0),
+      isActive: true,
+      isSettled: false
+    },
+    {
+      auctionId: 2,
+      ticketId: BigInt(2),
+      ticketCount: BigInt(1),
+      startPrice: BigInt(100000), // 0.1 USDC (6 decimals) - ALLOWED!
+      buyNowPrice: BigInt(200000), // 0.2 USDC
+      minIncrement: BigInt(10000), // 0.01 USDC
+      expiryTime: BigInt(Math.floor(Date.now() / 1000) + 172800), // 48 hours from now
+      seller: "0x1234567890123456789012345678901234567890",
+      highestBidder: "0x0987654321098765432109876543210987654321",
+      highestBid: BigInt(150000), // 0.15 USDC
+      isActive: true,
+      isSettled: false
+    }
+  ]
+
+  // Load auctions
+  const loadAuctions = useCallback(async () => {
+    if (!connection.isConnected) return
+    
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // In real implementation, this would call the smart contract
+      // For now, we'll use mock data
+      setAuctions(mockAuctions)
+      
+      // Load user bids if connected
+      if (connection.address) {
+        const bids = new Map<number, bigint>()
+        // Mock user bids - in real implementation, query the contract
+        if (connection.address.toLowerCase() === "0x0987654321098765432109876543210987654321") {
+          bids.set(2, BigInt(150000)) // 0.15 USDC bid on auction 2
+        }
+        setUserBids(bids)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load auctions')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [connection])
+
+  // Create a new auction
+  const createAuction = useCallback(async (auctionData: {
+    ticketId: string
+    startPrice: number
+    buyNowPrice: number
+    minIncrement: number
+    expiryDays: number
+  }) => {
+    if (!connection.isConnected || !connection.address) {
+      throw new Error('Wallet not connected')
     }
 
     setIsCreatingAuction(true)
+    setError(null)
+
     try {
+      // Convert to USDC decimals (6 decimals)
+      const startPrice = BigInt(Math.floor(auctionData.startPrice * 1000000))
+      const buyNowPrice = BigInt(Math.floor(auctionData.buyNowPrice * 1000000))
+      const minIncrement = BigInt(Math.floor(auctionData.minIncrement * 1000000))
+      
+      // Calculate expiry time
+      const expiryTime = BigInt(Math.floor(Date.now() / 1000) + (auctionData.expiryDays * 24 * 60 * 60))
+      
+      // Create provider and signer
       const provider = new ethers.BrowserProvider(window.ethereum)
       const signer = await provider.getSigner()
+      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, signer)
       
-      // First, approve the auction contract to transfer tickets
-      const ticketContract = new ethers.Contract(CONTRACT_ADDRESS!, CONTRACT_ABI, signer)
-      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS!, AUCTION_CONTRACT_ABI, signer)
-      
-      // Check if already approved
-      const isApproved = await ticketContract.isApprovedForAll(await signer.getAddress(), AUCTION_CONTRACT_ADDRESS!)
-      
-      if (!isApproved) {
-        toast.info("Approving tickets...", "Please approve the auction contract to transfer your tickets")
-        
-        const approveTx = await ticketContract.setApprovalForAll(AUCTION_CONTRACT_ADDRESS!, true)
-        await approveTx.wait()
-        
-        toast.success("Approval successful!", "Now creating auction...")
-      }
-      
-      // Also check if the user has enough tickets
-      const userBalance = await ticketContract.balanceOf(await signer.getAddress(), BigInt(params.tokenId))
-      if (userBalance < 1) {
-        throw new Error(`Insufficient tickets. You have ${userBalance} tickets for token ID ${params.tokenId}`)
-      }
-
       // Create the auction
       const tx = await auctionContract.createAuction(
-        BigInt(params.tokenId), // Convert string to BigInt
-        1, // ticketCount - assuming 1 ticket per auction for now
-        params.startPrice,
-        params.buyNowPrice,
-        params.minIncrement,
-        params.expiryTime
+        BigInt(auctionData.ticketId),
+        1, // ticketCount - assuming 1 ticket per auction
+        startPrice,
+        buyNowPrice,
+        minIncrement,
+        expiryTime
       )
-
-      toast.info("Creating auction...", "Please wait for the transaction to be confirmed")
-
-      const receipt = await tx.wait()
       
-      // Get auction ID from event
-      const event = receipt.logs.find((log: any) => {
-        try {
-          return auctionContract.interface.parseLog(log)
-        } catch {
-          return false
-        }
-      })
-
-      if (event) {
-        const parsedEvent = auctionContract.interface.parseLog(event)
-        const auctionId = parsedEvent.args.auctionId
-        
-        toast.success("Auction created!", `Auction ID: ${auctionId.toString()}`)
-        
-        return auctionId.toString()
-      }
-
-      toast.success("Auction created!", "Your tickets are now up for auction")
-
-    } catch (error: any) {
-      console.error('Error creating auction:', error)
-      toast.error("Error creating auction", error.message || "Something went wrong")
-      throw error
+      console.log('Creating auction...', tx.hash)
+      
+      // Wait for transaction confirmation
+      const receipt = await tx.wait()
+      console.log('Auction created successfully!', receipt)
+      
+      // Refresh auctions
+      await loadAuctions()
+      
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create auction')
+      throw err
     } finally {
       setIsCreatingAuction(false)
     }
-  }
+  }, [connection, loadAuctions])
 
-  const placeBid = async (params: BidParams) => {
-    if (!window.ethereum) {
-      toast.error("Error", "Please connect your wallet first")
-      return
+  // Place a bid on an auction
+  const placeBid = useCallback(async (auctionId: number, bidAmount: bigint) => {
+    if (!connection.isConnected || !connection.address) {
+      throw new Error('Wallet not connected')
     }
 
-    setIsBidding(true)
+    setIsLoading(true)
+    setError(null)
+
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
+      // In real implementation, this would:
+      // 1. Check USDC allowance
+      // 2. Call the bid() function on the auction contract
+      // 3. Wait for transaction confirmation
       
-      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS!, AUCTION_CONTRACT_ABI, signer)
+      // For now, simulate the bid
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate transaction time
       
-      // Get USDC contract address from auction contract
-      const usdcAddress = await auctionContract.usdcToken()
-      
-      // Create USDC contract instance (minimal ABI for transferFrom)
-      const usdcABI = [
-        "function transferFrom(address from, address to, uint256 amount) returns (bool)",
-        "function approve(address spender, uint256 amount) returns (bool)",
-        "function allowance(address owner, address spender) view returns (uint256)"
-      ]
-      
-      const usdcContract = new ethers.Contract(usdcAddress, usdcABI, signer)
-      
-      // Check and approve USDC spending
-      const allowance = await usdcContract.allowance(await signer.getAddress(), AUCTION_CONTRACT_ADDRESS!)
-      
-      if (allowance < params.bidAmount) {
-        toast.info("Approving USDC...", "Please approve the auction contract to spend your USDC")
-        
-        const approveTx = await usdcContract.approve(AUCTION_CONTRACT_ADDRESS!, params.bidAmount)
-        await approveTx.wait()
-        
-        toast.success("USDC approved!", "Now placing bid...")
-      }
+      // Update local state
+      setAuctions(prev => prev.map(auction => {
+        if (auction.auctionId === auctionId) {
+          return {
+            ...auction,
+            highestBid: bidAmount,
+            highestBidder: connection.address
+          }
+        }
+        return auction
+      }))
 
-      // Place the bid
-      const tx = await auctionContract.bid(params.auctionId, params.bidAmount)
-      
-      toast.info("Placing bid...", "Please wait for the transaction to be confirmed")
+      // Update user bids
+      setUserBids(prev => new Map(prev).set(auctionId, bidAmount))
 
-      await tx.wait()
-      
-      toast.success("Bid placed!", "Your bid has been submitted successfully")
-
-    } catch (error: any) {
-      console.error('Error placing bid:', error)
-      toast.error("Error placing bid", error.message || "Something went wrong")
-      throw error
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to place bid')
+      throw err
     } finally {
-      setIsBidding(false)
+      setIsLoading(false)
     }
-  }
+  }, [connection])
 
-  const buyNow = async (auctionId: string) => {
-    if (!window.ethereum) {
-      toast.error("Error", "Please connect your wallet first")
-      return
+  // Buy now (execute buy now price)
+  const buyNow = useCallback(async (auctionId: number) => {
+    if (!connection.isConnected || !connection.address) {
+      throw new Error('Wallet not connected')
     }
+
+    setIsLoading(true)
+    setError(null)
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
+      // In real implementation, this would call the buyNow() function
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate transaction time
       
-      const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS!, AUCTION_CONTRACT_ABI, signer)
-      
-      // Get auction details to know the buy now price
-      const auction = await auctionContract.getAuction(auctionId)
-      const buyNowPrice = auction.buyNowPrice
-      
-      // Get USDC contract address from auction contract
-      const usdcAddress = await auctionContract.usdcToken()
-      
-      // Create USDC contract instance
-      const usdcABI = [
-        "function transferFrom(address from, address to, uint256 amount) returns (bool)",
-        "function approve(address spender, uint256 amount) returns (bool)",
-        "function allowance(address owner, address spender) view returns (uint256)"
-      ]
-      
-      const usdcContract = new ethers.Contract(usdcAddress, usdcABI, signer)
-      
-      // Check and approve USDC spending
-      const allowance = await usdcContract.allowance(await signer.getAddress(), AUCTION_CONTRACT_ADDRESS!)
-      
-      if (allowance < buyNowPrice) {
-        toast.info("Approving USDC...", "Please approve the auction contract to spend your USDC")
-        
-        const approveTx = await usdcContract.approve(AUCTION_CONTRACT_ADDRESS!, buyNowPrice)
-        await approveTx.wait()
-        
-        toast.success("USDC approved!", "Now executing buy now...")
-      }
+      // Update local state
+      setAuctions(prev => prev.map(auction => {
+        if (auction.auctionId === auctionId) {
+          return {
+            ...auction,
+            isActive: false,
+            isSettled: true,
+            highestBidder: connection.address,
+            highestBid: auction.buyNowPrice
+          }
+        }
+        return auction
+      }))
 
-      // Execute buy now
-      const tx = await auctionContract.buyNow(auctionId)
-      
-      toast.info("Executing buy now...", "Please wait for the transaction to be confirmed")
-
-      await tx.wait()
-      
-      toast.success("Purchase successful!", "You have successfully purchased the tickets")
-
-    } catch (error: any) {
-      console.error('Error executing buy now:', error)
-      toast.error("Error executing buy now", error.message || "Something went wrong")
-      throw error
+      return true
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to execute buy now')
+      throw err
+    } finally {
+      setIsLoading(false)
     }
-  }
+  }, [connection])
+
+  // Get auction by ID
+  const getAuction = useCallback((auctionId: number) => {
+    return auctions.find(auction => auction.auctionId === auctionId)
+  }, [auctions])
+
+  // Get user's current bid on an auction
+  const getUserBid = useCallback((auctionId: number) => {
+    return userBids.get(auctionId)
+  }, [userBids])
+
+  // Check if user can bid (not the seller and auction is active)
+  const canBid = useCallback((auction: Auction) => {
+    if (!connection.address || !auction.isActive || auction.isSettled) return false
+    return connection.address.toLowerCase() !== auction.seller.toLowerCase()
+  }, [connection.address])
+
+  // Check if user can buy now
+  const canBuyNow = useCallback((auction: Auction) => {
+    if (!connection.address || !auction.isActive || auction.isSettled) return false
+    if (auction.buyNowPrice === BigInt(0)) return false
+    return connection.address.toLowerCase() !== auction.seller.toLowerCase()
+  }, [connection.address])
+
+  // Load auctions when provider or address changes
+  useEffect(() => {
+    loadAuctions()
+  }, [loadAuctions])
 
   return {
+    auctions,
+    userBids,
+    isLoading,
+    error,
+    isCreatingAuction,
     createAuction,
     placeBid,
     buyNow,
-    isCreatingAuction,
-    isBidding
+    getAuction,
+    getUserBid,
+    canBid,
+    canBuyNow,
+    loadAuctions
   }
 }

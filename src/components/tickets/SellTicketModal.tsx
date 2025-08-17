@@ -164,9 +164,9 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
     setFormData(prev => ({ 
       ...prev, 
       tokenId: ticket.tokenId,
-      startPrice: (parseFloat(ticket.ticketInfo.price) * 0.8).toFixed(2), // 80% of original price as start
-      buyNowPrice: (parseFloat(ticket.ticketInfo.price) * 1.2).toFixed(2), // 120% of original price as buy now
-      minIncrement: '5.00' // Default 5 USDC increment
+      startPrice: '0.000001', // Default to lowest possible value
+      buyNowPrice: '0.000002', // Default to 2x start price
+      minIncrement: '0.000001' // Default to 0.000001 USDC increment
     }))
   }
 

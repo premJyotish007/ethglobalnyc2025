@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { TicketCard } from './TicketCard'
-import { Ticket } from '@/types'
+import { Ticket, Auction } from '@/types'
+import { useAuctions } from '@/hooks/useAuctions'
+import { BidModal } from './BidModal'
 
 interface Bid {
   id: string
@@ -23,6 +25,17 @@ interface TicketGridProps {
 
 export function TicketGrid({ tickets, onBid, onBuy, currentUserAddress, isLoading }: TicketGridProps) {
   const [userBids, setUserBids] = useState<Bid[]>([])
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
+  const [isBidModalOpen, setIsBidModalOpen] = useState(false)
+  
+  const { 
+    auctions, 
+    placeBid, 
+    buyNow, 
+    getUserBid, 
+    canBid, 
+    canBuyNow 
+  } = useAuctions()
 
   // Fetch user's bids when component mounts or currentUserAddress changes
   useEffect(() => {
@@ -53,6 +66,49 @@ export function TicketGrid({ tickets, onBid, onBuy, currentUserAddress, isLoadin
     return userBids.find(bid => bid.tokenId === ticket.tokenId)
   }
 
+  // Helper function to get auction for a ticket
+  const getAuctionForTicket = (ticket: Ticket): Auction | undefined => {
+    return auctions.find(auction => 
+      auction.ticketId === BigInt(ticket.tokenId) && auction.isActive
+    )
+  }
+
+  // Handle bid button click
+  const handleBidClick = (ticketId: string, auctionId?: number) => {
+    const ticket = tickets.find(t => t.id === ticketId)
+    if (ticket) {
+      setSelectedTicket(ticket)
+      setIsBidModalOpen(true)
+    }
+  }
+
+  // Handle buy button click
+  const handleBuyClick = async (ticketId: string, auctionId?: number) => {
+    if (auctionId) {
+      // Handle auction buy now
+      try {
+        await buyNow(auctionId)
+        // Refresh auctions after successful purchase
+        // This would typically trigger a refresh of the data
+      } catch (error) {
+        console.error('Failed to execute buy now:', error)
+      }
+    } else {
+      // Handle regular ticket purchase
+      onBuy?.(ticketId)
+    }
+  }
+
+  // Handle bid placement
+  const handleBidPlaced = async (bidAmount: bigint) => {
+    if (!selectedTicket) return
+    
+    const auction = getAuctionForTicket(selectedTicket)
+    if (auction) {
+      await placeBid(auction.auctionId, bidAmount)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -79,17 +135,39 @@ export function TicketGrid({ tickets, onBid, onBuy, currentUserAddress, isLoadin
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {tickets.map((ticket) => (
-        <TicketCard
-          key={ticket.id}
-          ticket={ticket}
-          onBid={onBid}
-          onBuy={onBuy}
-          isOwner={currentUserAddress === ticket.seller}
-          currentUserBid={getUserBidForTicket(ticket)}
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {tickets.map((ticket) => {
+          const auction = getAuctionForTicket(ticket)
+          const userBid = auction ? getUserBid(auction.auctionId) : getUserBidForTicket(ticket)
+          
+          return (
+            <TicketCard
+              key={ticket.id}
+              ticket={ticket}
+              onBid={handleBidClick}
+              onBuy={handleBuyClick}
+              isOwner={currentUserAddress === ticket.seller}
+              currentUserBid={userBid}
+              auction={auction}
+            />
+          )
+        })}
+      </div>
+
+      {/* Bid Modal */}
+      {selectedTicket && (
+        <BidModal
+          ticket={selectedTicket}
+          isOpen={isBidModalOpen}
+          onClose={() => {
+            setIsBidModalOpen(false)
+            setSelectedTicket(null)
+          }}
+          onBidPlaced={handleBidPlaced}
+          currentHighestBid={getAuctionForTicket(selectedTicket)?.highestBid}
         />
-      ))}
-    </div>
+      )}
+    </>
   )
 }

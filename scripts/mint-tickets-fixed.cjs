@@ -2,20 +2,20 @@ const { ethers } = require("hardhat");
 
 async function main() {
   // Set your ticket details here - modify these values for different tickets
-  const eventName = "Taylor Swift - The Eras Tour";
-  const section = "VIP Floor";
-  const row = "A";
-  const seat = "1-5";
-  const priceInUSDC = 500;
+  const eventName = "Lowest Value Test Ticket";
+  const section = "Test Section";
+  const row = "Z";
+  const seat = "999";
+  const priceInUSDC = 0.000001; // LOWEST POSSIBLE VALUE: 0.000001 USDC (1 wei in USDC terms)
   const amount = 1;
-  const daysFromNow = 90; // 90 days from now
+  const daysFromNow = 7; // 7 days from now
   
   console.log("Minting ticket with details:");
   console.log("Event:", eventName);
   console.log("Section:", section);
   console.log("Row:", row);
   console.log("Seat:", seat);
-  console.log("Price:", priceInUSDC, "USDC");
+  console.log("Price:", priceInUSDC, "USDC (LOWEST POSSIBLE VALUE)");
   console.log("Amount:", amount);
   console.log("Event Date:", daysFromNow, "days from now");
   console.log("---");

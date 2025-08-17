@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Ticket } from '@/types'
+import { Ticket, Auction } from '@/types'
 import { formatAddress, formatUSDC } from '@/lib/utils'
 import { Calendar, Copy, MapPin, Ticket as TicketIcon, DollarSign, Clock } from 'lucide-react'
 
@@ -18,13 +18,14 @@ interface Bid {
 
 interface TicketCardProps {
   ticket: Ticket
-  onBid?: (ticketId: string) => void
-  onBuy?: (ticketId: string) => void
+  onBid?: (ticketId: string, auctionId?: number) => void
+  onBuy?: (ticketId: string, auctionId?: number) => void
   isOwner?: boolean
   currentUserBid?: Bid
+  auction?: Auction
 }
 
-export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: TicketCardProps) {
+export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid, auction }: TicketCardProps) {
   // Check if bidding has expired
   const isBiddingExpired = ticket.bidExpiryTime ? Date.now() / 1000 > ticket.bidExpiryTime : false
   
@@ -205,22 +206,50 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: Ti
       </CardContent>
       
       <CardFooter className="flex gap-2">
-        {!isOwner && ticket.isListed && (
+        {!isOwner && (
           <>
-            <Button 
-              onClick={() => onBid?.(ticket.id)} 
-              className="flex-1"
-              variant={currentUserBid ? "default" : "outline"}
-              disabled={isBiddingExpired}
-            >
-              {isBiddingExpired ? 'Bidding Expired' : (currentUserBid ? 'Edit Bid' : 'Place Bid')}
-            </Button>
-            <Button 
-              onClick={() => onBuy?.(ticket.id)} 
-              className="flex-1"
-            >
-              Buy Now
-            </Button>
+            {/* Show bid button for auction tickets */}
+            {auction && auction.isActive && !auction.isSettled && (
+              <Button 
+                onClick={() => onBid?.(ticket.id, auction.auctionId)} 
+                className="flex-1"
+                variant={currentUserBid ? "default" : "outline"}
+                disabled={isBiddingExpired}
+              >
+                {isBiddingExpired ? 'Bidding Expired' : (currentUserBid ? 'Edit Bid' : 'Place Bid')}
+              </Button>
+            )}
+            
+            {/* Show buy now button for auction tickets with buy now price */}
+            {auction && auction.isActive && !auction.isSettled && auction.buyNowPrice > BigInt(0) && (
+              <Button 
+                onClick={() => onBuy?.(ticket.id, auction.auctionId)} 
+                className="flex-1"
+                variant="default"
+              >
+                Buy Now ({formatUSDC(auction.buyNowPrice)} USDC)
+              </Button>
+            )}
+            
+            {/* Show regular buy button for non-auction tickets */}
+            {!auction && ticket.isListed && (
+              <>
+                <Button 
+                  onClick={() => onBid?.(ticket.id)} 
+                  className="flex-1"
+                  variant={currentUserBid ? "default" : "outline"}
+                  disabled={isBiddingExpired}
+                >
+                  {isBiddingExpired ? 'Bidding Expired' : (currentUserBid ? 'Edit Bid' : 'Place Bid')}
+                </Button>
+                <Button 
+                  onClick={() => onBuy?.(ticket.id)} 
+                  className="flex-1"
+                >
+                  Buy Now
+                </Button>
+              </>
+            )}
           </>
         )}
       </CardFooter>

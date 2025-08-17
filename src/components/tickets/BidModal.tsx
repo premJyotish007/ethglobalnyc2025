@@ -1,152 +1,190 @@
 import React, { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Ticket } from '@/types'
-import { formatUSDC, parseUSDC } from '@/lib/utils'
-import { DollarSign, X, Trash2 } from 'lucide-react'
-
-interface Bid {
-  id: string
-  bidder: string
-  amount: string
-  tokenId: string
-  tokenContractAddress: string
-  recipient: string
-  timestamp: number
-  status: string
-}
+import { formatUSDC } from '@/lib/utils'
+import { DollarSign, Clock, AlertCircle } from 'lucide-react'
+import { useToast } from '@/hooks/useToast'
 
 interface BidModalProps {
   ticket: Ticket
   isOpen: boolean
   onClose: () => void
-  onPlaceBid: (ticketId: string, amount: bigint, existingBidId?: string) => void
-  onCancelBid?: (bidId: string) => void
-  currentUserBid?: Bid
-  isLoading?: boolean
+  onBidPlaced: (bidAmount: bigint) => void
+  currentHighestBid?: bigint
 }
 
-export function BidModal({ ticket, isOpen, onClose, onPlaceBid, onCancelBid, currentUserBid, isLoading }: BidModalProps) {
+export function BidModal({ ticket, isOpen, onClose, onBidPlaced, currentHighestBid }: BidModalProps) {
   const [bidAmount, setBidAmount] = useState('')
-  
-  // Check if bidding has expired
-  const isBiddingExpired = ticket.bidExpiryTime ? Date.now() / 1000 > ticket.bidExpiryTime : false
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const { toast } = useToast()
 
-  // Set initial bid amount when modal opens or currentUserBid changes
+  // Reset form when modal opens/closes
   useEffect(() => {
-    if (currentUserBid) {
-      setBidAmount(formatUSDC(BigInt(currentUserBid.amount)))
-    } else {
+    if (isOpen) {
       setBidAmount('')
+      setError('')
+      // Set default bid amount to minimum required
+      if (ticket.startPrice) {
+        setBidAmount(formatUSDC(ticket.startPrice))
+      }
     }
-  }, [currentUserBid, isOpen])
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (bidAmount && parseFloat(bidAmount) > 0) {
-      // Pass existing bid ID if editing, otherwise undefined for new bid
-      onPlaceBid(ticket.id, parseUSDC(bidAmount), currentUserBid?.id)
-    }
-  }
-
-  const handleCancelBid = () => {
-    if (currentUserBid && onCancelBid) {
-      onCancelBid(currentUserBid.id)
-    }
-  }
+  }, [isOpen, ticket.startPrice])
 
   if (!isOpen) return null
 
+  const handleBidSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    
+    if (!bidAmount || parseFloat(bidAmount) <= 0) {
+      setError('Please enter a valid bid amount')
+      return
+    }
+
+    const bidAmountBigInt = BigInt(Math.floor(parseFloat(bidAmount) * 1000000)) // Convert to USDC decimals (6)
+    
+    // Validate minimum bid - allow any bid >= startPrice
+    if (ticket.startPrice && bidAmountBigInt < ticket.startPrice) {
+      setError(`Bid must be at least ${formatUSDC(ticket.startPrice)} USDC`)
+      return
+    }
+
+    // Validate bid increment
+    if (ticket.minIncrement && currentHighestBid) {
+      const minBid = currentHighestBid + ticket.minIncrement
+      if (bidAmountBigInt < minBid) {
+        setError(`Bid must be at least ${formatUSDC(minBid)} USDC (current bid + min increment)`)
+        return
+      }
+    }
+
+    setIsLoading(true)
+    
+    try {
+      // Call the onBidPlaced callback (this will be handled by the parent component)
+      await onBidPlaced(bidAmountBigInt)
+      
+      toast.success(
+        "Bid Placed Successfully!",
+        `Your bid of ${formatUSDC(bidAmountBigInt)} USDC has been placed.`
+      )
+      
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to place bid')
+      toast.error(
+        "Bid Failed",
+        err instanceof Error ? err.message : 'Failed to place bid'
+      )
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getMinBidAmount = () => {
+    if (currentHighestBid && ticket.minIncrement) {
+      return currentHighestBid + ticket.minIncrement
+    }
+    return ticket.startPrice || BigInt(0)
+  }
+
+  const minBidAmount = getMinBidAmount()
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-md mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>{currentUserBid ? 'Edit Bid' : 'Place Bid'}</CardTitle>
-            <Button variant="ghost" size="icon" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" />
+            Place Bid
+          </CardTitle>
           <CardDescription>
-            {currentUserBid ? 'Edit your bid on' : 'Bid on'} {ticket.eventName} - Section {ticket.section}, Row {ticket.row}, Seat {ticket.seat}
+            Bid on {ticket.eventName} - {ticket.section}, Row {ticket.row}, Seat {ticket.seat}
           </CardDescription>
         </CardHeader>
         
-        <CardContent>
-          <div className="space-y-4">
-            {/* Show warning if bidding has expired */}
-            {isBiddingExpired && (
-              <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-red-600">⚠️ Bidding has expired for this ticket</span>
-                </div>
-                <p className="text-xs text-red-600 mt-1">
-                  You can no longer place or edit bids on this ticket.
-                </p>
+        <CardContent className="space-y-4">
+          {/* Current Auction Info */}
+          <div className="bg-muted p-3 rounded-lg space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Starting Price:</span>
+              <span className="font-medium">{formatUSDC(ticket.startPrice || BigInt(0))} USDC</span>
+            </div>
+            {currentHighestBid && currentHighestBid > BigInt(0) && (
+              <div className="flex justify-between text-sm">
+                <span>Current Highest Bid:</span>
+                <span className="font-medium text-blue-600">{formatUSDC(currentHighestBid)} USDC</span>
               </div>
             )}
-            
-            <div className="p-3 bg-muted rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Current Price:</span>
-                <span className="font-semibold">{formatUSDC(ticket.price)} USDC</span>
-              </div>
+            <div className="flex justify-between text-sm">
+              <span>Minimum Bid:</span>
+              <span className="font-medium text-green-600">{formatUSDC(minBidAmount)} USDC</span>
             </div>
-            
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="bidAmount" className="text-sm font-medium">
-                  Your Bid Amount (USDC)
-                </label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="bidAmount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={bidAmount}
-                    onChange={(e) => setBidAmount(e.target.value)}
-                    className="pl-10"
-                    required
-                    disabled={isBiddingExpired}
-                  />
-                </div>
+            {ticket.minIncrement && (
+              <div className="flex justify-between text-sm">
+                <span>Min Increment:</span>
+                <span className="font-medium">{formatUSDC(ticket.minIncrement)} USDC</span>
               </div>
-              
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={onClose}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                {currentUserBid && onCancelBid && (
-                  <Button 
-                    type="button" 
-                    variant="destructive" 
-                    onClick={handleCancelBid}
-                    className="flex-1"
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Cancel Bid
-                  </Button>
-                )}
-                <Button 
-                  type="submit" 
-                  className="flex-1"
-                  disabled={isLoading || !bidAmount || parseFloat(bidAmount) <= 0 || isBiddingExpired}
-                >
-                  {isLoading ? (currentUserBid ? 'Updating Bid...' : 'Placing Bid...') : (currentUserBid ? 'Update Bid' : 'Place Bid')}
-                </Button>
+            )}
+            {ticket.expiryTime && (
+              <div className="flex justify-between text-sm">
+                <span>Expires:</span>
+                <span className="font-medium">{new Date(Number(ticket.expiryTime) * 1000).toLocaleString()}</span>
               </div>
-            </form>
+            )}
           </div>
+
+          {/* Bid Form */}
+          <form onSubmit={handleBidSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="bidAmount" className="block text-sm font-medium mb-2">
+                Your Bid Amount (USDC)
+              </label>
+              <Input
+                id="bidAmount"
+                type="number"
+                step="0.01"
+                min={Number(minBidAmount) / 1000000}
+                value={bidAmount}
+                onChange={(e) => setBidAmount(e.target.value)}
+                placeholder={`Minimum: ${formatUSDC(minBidAmount)} USDC`}
+                className="w-full"
+                required
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum bid: {formatUSDC(minBidAmount)} USDC
+              </p>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 dark:bg-red-950/20 p-2 rounded">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                className="flex-1"
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Placing Bid...' : 'Place Bid'}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

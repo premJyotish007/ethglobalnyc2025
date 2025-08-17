@@ -76,9 +76,20 @@ export default function Home() {
   const handleSellTicket = async (ticketData: any) => {
     try {
       setIsProcessing(true)
-      await createAuction(ticketData)
+      
+      // Create auction with the ticket data
+      await createAuction({
+        ticketId: ticketData.tokenId,
+        startPrice: Number(ticketData.startPrice) / 1000000, // Convert from BigInt to USDC
+        buyNowPrice: Number(ticketData.buyNowPrice) / 1000000,
+        minIncrement: Number(ticketData.minIncrement) / 1000000,
+        expiryDays: Math.ceil(Number(ticketData.expiryTime - BigInt(Math.floor(Date.now() / 1000))) / (24 * 60 * 60))
+      })
+      
       setIsSellModalOpen(false)
       refreshTickets() // Refresh to show updated ticket status
+      refreshAuctions() // Refresh auctions to show the new one
+      
     } catch (error) {
       console.error('Error selling ticket:', error)
     } finally {
@@ -234,7 +245,7 @@ export default function Home() {
                 // Convert blockchain auctions to ticket format
                 ...activeAuctions.map(auction => ({
                   id: `auction-${auction.auctionId}`, // Unique prefix for auctions
-                  tokenId: auction.ticketId,
+                  tokenId: auction.ticketId.toString(),
                   eventName: auction.ticketInfo?.eventName || `Ticket #${auction.ticketId}`,
                   section: auction.ticketInfo?.section || 'Unknown',
                   row: auction.ticketInfo?.row || 'Unknown',
@@ -249,7 +260,8 @@ export default function Home() {
                   expiryTime: auction.expiryTime,
                   highestBid: auction.highestBid,
                   highestBidder: auction.highestBidder,
-                  isBlockchainAuction: true // Flag to identify blockchain auctions
+                  isBlockchainAuction: true, // Flag to identify blockchain auctions
+                  tokenContractAddress: "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad" // From deployment info
                 })),
                 // Add dummy tickets
                 ...dummyTickets.map(ticket => ({
@@ -278,21 +290,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Bid Modal */}
-      {selectedTicket && (
-        <BidModal
-          ticket={selectedTicket}
-          isOpen={isBidModalOpen}
-          onClose={() => {
-            setIsBidModalOpen(false)
-            setSelectedTicket(null)
-          }}
-          onPlaceBid={handlePlaceBid}
-          onCancelBid={handleCancelBid}
-          currentUserBid={getCurrentUserBid()}
-          isLoading={isProcessing}
-        />
-      )}
+      {/* Bid Modal is now handled by TicketGrid component */}
 
       {/* Sell Ticket Modal */}
       <SellTicketModal
