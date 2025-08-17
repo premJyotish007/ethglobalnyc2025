@@ -28,7 +28,7 @@ async function main() {
   const TicketToken = await ethers.getContractFactory("TicketToken");
   
   // Use the newly deployed contract address on Base Sepolia
-  const ticketTokenAddress = "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad";
+  const ticketTokenAddress = "0xD252C2A8DC02Da67d5E8F5134D10a86759092784";
   const ticketToken = TicketToken.attach(ticketTokenAddress);
 
   // Use a proper future date based on parameter

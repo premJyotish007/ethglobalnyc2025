@@ -182,7 +182,7 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid, auct
                 <span className="text-sm text-blue-600 font-medium">Your Bid:</span>
               </div>
               <span className="text-sm font-bold text-blue-600">
-                {formatUSDC(BigInt(currentUserBid.amount))} USDC
+                {formatUSDC(BigInt(currentUserBid.amount || 0))} USDC
               </span>
             </div>
           )}

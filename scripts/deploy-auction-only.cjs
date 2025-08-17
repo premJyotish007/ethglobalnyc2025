@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Deploying TicketAuction contract to Base Sepolia...");
+  console.log("Deploying only TicketAuction contract to Base Sepolia...");
 
   // Get the signer
   const [deployer] = await ethers.getSigners();
@@ -11,23 +11,8 @@ async function main() {
   const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
   console.log("Using Base Sepolia USDC address:", usdcAddress);
 
-  // Read existing deployment info to get TicketToken address
-  const fs = require('fs');
-  let deploymentInfo;
-  try {
-    deploymentInfo = JSON.parse(fs.readFileSync('deployment-info.json', 'utf8'));
-  } catch (error) {
-    console.error("❌ Could not read deployment-info.json");
-    console.log("Please deploy TicketToken first using: npx hardhat run scripts/deploy-ticket-token.cjs --network base-sepolia");
-    return;
-  }
-
-  const ticketTokenAddress = deploymentInfo.contracts.ticketToken;
-  if (!ticketTokenAddress) {
-    console.error("❌ No TicketToken address found in deployment-info.json");
-    return;
-  }
-
+  // Use the TicketToken address from the last successful deployment
+  const ticketTokenAddress = "0xD252C2A8DC02Da67d5E8F5134D10a86759092784";
   console.log("Using existing TicketToken address:", ticketTokenAddress);
 
   // Deploy TicketAuction
@@ -35,7 +20,7 @@ async function main() {
   const TicketAuction = await ethers.getContractFactory("TicketAuction");
   const ticketAuction = await TicketAuction.deploy(
     usdcAddress, // Real USDC token address
-    ticketTokenAddress, // Existing TicketToken address
+    ticketTokenAddress, // Existing Ticket token address
     deployer.address, // Coordinator address (same as deployer for now)
     deployer.address // Initial owner
   );
@@ -45,32 +30,33 @@ async function main() {
   console.log("\n=== Deployment Summary ===");
   console.log("Network: Base Sepolia");
   console.log("USDC (Real):", usdcAddress);
-  console.log("TicketToken:", ticketTokenAddress);
+  console.log("TicketToken (existing):", ticketTokenAddress);
   console.log("TicketAuction:", await ticketAuction.getAddress());
   console.log("Deployer:", deployer.address);
   
-  // Update deployment info with new contract
-  deploymentInfo.contracts.usdc = usdcAddress;
-  deploymentInfo.contracts.ticketAuction = await ticketAuction.getAddress();
-  
+  // Save deployment addresses to a file
+  const deploymentInfo = {
+    network: "base-sepolia",
+    deployer: deployer.address,
+    contracts: {
+      usdc: usdcAddress,
+      ticketToken: ticketTokenAddress,
+      ticketAuction: await ticketAuction.getAddress()
+    },
+    timestamp: new Date().toISOString()
+  };
+
+  const fs = require('fs');
   fs.writeFileSync(
     'deployment-info.json',
     JSON.stringify(deploymentInfo, null, 2)
   );
-  console.log("\nDeployment info updated in deployment-info.json");
+  console.log("\nDeployment info saved to deployment-info.json");
   
   console.log("\n🔗 Base Sepolia Explorer Links:");
   console.log("USDC:", `https://sepolia.basescan.org/address/${usdcAddress}`);
   console.log("TicketToken:", `https://sepolia.basescan.org/address/${ticketTokenAddress}`);
   console.log("TicketAuction:", `https://sepolia.basescan.org/address/${await ticketAuction.getAddress()}`);
-  
-  console.log("\n🎉 Deployment complete! You can now:");
-  console.log("1. Test the system with your 30 USDC");
-  console.log("2. Create auctions using the frontend");
-  console.log("3. Place bids on auctions");
-  
-  console.log("\n💰 To get USDC for testing:");
-  console.log("Visit: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet");
 }
 
 main()

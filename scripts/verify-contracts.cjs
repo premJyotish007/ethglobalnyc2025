@@ -8,8 +8,8 @@ async function main() {
 
   // Contract addresses from deployment
   const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // Real USDC
-  const ticketTokenAddress = "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad";
-  const ticketAuctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const ticketTokenAddress = "0xD252C2A8DC02Da67d5E8F5134D10a86759092784";
+const ticketAuctionAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0";
 
   console.log("\n1. Checking USDC contract...");
   const usdcCode = await provider.getCode(usdcAddress);

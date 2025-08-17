@@ -382,12 +382,34 @@ contract TicketAuction is Ownable, ReentrancyGuard, IERC1155Receiver {
     }
     
     /**
+     * @dev Gets the total number of auctions created
+     * @return The total number of auctions
+     */
+    function getAuctionCount() external view returns (uint256) {
+        return _auctionCounter;
+    }
+    
+    /**
      * @dev Gets auction details
      * @param auctionId The ID of the auction
      * @return auction The auction details
      */
     function getAuction(uint256 auctionId) external view returns (Auction memory auction) {
         auction = auctions[auctionId];
+    }
+    
+    /**
+     * @dev Gets the bid amount for a specific bidder on an auction
+     * @param auctionId The ID of the auction
+     * @param bidder The address of the bidder
+     * @return The bid amount (0 if no bid)
+     */
+    function getBid(uint256 auctionId, address bidder) external view returns (uint256) {
+        Auction storage auction = auctions[auctionId];
+        if (auction.highestBidder == bidder) {
+            return auction.highestBid;
+        }
+        return 0;
     }
     
 

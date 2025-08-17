@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 async function main() {
   console.log("🔍 Checking Auction ID 4 Details...\n");
 
-  const AUCTION_CONTRACT_ADDRESS = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const AUCTION_CONTRACT_ADDRESS = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   
   // Get the signer
   const [signer] = await ethers.getSigners();

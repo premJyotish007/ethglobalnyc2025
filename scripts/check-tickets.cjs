@@ -7,7 +7,7 @@ async function main() {
 
   // Get the TicketToken contract
   const TicketToken = await ethers.getContractFactory("TicketToken");
-  const ticketTokenAddress = "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad";
+  const ticketTokenAddress = "0xD252C2A8DC02Da67d5E8F5134D10a86759092784";
   const ticketToken = TicketToken.attach(ticketTokenAddress);
 
   console.log("Checking for existing tickets...");

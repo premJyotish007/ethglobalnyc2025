@@ -20,7 +20,7 @@ async function main() {
   const usdcContract = new ethers.Contract(usdcAddress, usdcABI, deployer);
 
   // Auction contract address (you'll need to update this after deployment)
-  const auctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a"; // Updated with deployed address
+  const auctionAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0"; // Updated with deployed address
   
   try {
     // Check current allowance

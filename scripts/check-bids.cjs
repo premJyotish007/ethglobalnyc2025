@@ -9,7 +9,7 @@ async function main() {
   const provider = new ethers.JsonRpcProvider("https://sepolia.base.org");
   
   // Auction contract address and ABI
-  const auctionContractAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const auctionContractAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   const auctionABI = [
     "function getAuction(uint256 auctionId) view returns (tuple(uint256 auctionId, uint256 ticketId, uint256 ticketCount, uint256 startPrice, uint256 buyNowPrice, uint256 minIncrement, uint256 expiryTime, address seller, address highestBidder, uint256 highestBid, bool isActive, bool isSettled) auction)",
     "function getBid(uint256 auctionId, address bidder) view returns (uint256)"

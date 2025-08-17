@@ -60,7 +60,7 @@ export function useAuctions() {
       const auctionContract = new ethers.Contract(AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI, provider)
       
       // Create ticket contract instance to get ticket info
-      const ticketContract = new ethers.Contract("0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad", [
+      const ticketContract = new ethers.Contract("0xD252C2A8DC02Da67d5E8F5134D10a86759092784", [
         "function getTicketInfo(uint256 tokenId) view returns (tuple(string eventName, string section, string row, string seat, uint256 eventDate, uint256 price, bool isActive) ticket, bool isUsed)"
       ], provider)
       

@@ -265,7 +265,7 @@ export default function Home() {
                   highestBid: auction.highestBid,
                   highestBidder: auction.highestBidder,
                   isBlockchainAuction: true, // Flag to identify blockchain auctions
-                  tokenContractAddress: "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad", // From deployment info
+                  tokenContractAddress: "0xD252C2A8DC02Da67d5E8F5134D10a86759092784", // From deployment info
                   isListed: true // Mark as listed since it's in an auction
                 })),
                 // Add dummy tickets

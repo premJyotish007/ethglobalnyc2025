@@ -17,7 +17,7 @@ async function main() {
   ];
 
   // Auction contract address
-  const auctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const auctionAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   
   // Create contract instance
   const usdcContract = new ethers.Contract(usdcAddress, usdcABI, deployer);

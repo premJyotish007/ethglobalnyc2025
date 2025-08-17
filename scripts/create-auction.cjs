@@ -9,7 +9,7 @@ async function main() {
   const TicketAuction = await ethers.getContractFactory("TicketAuction");
   
   // Use the newly deployed contract address on Base Sepolia
-  const auctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const auctionAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   const auction = TicketAuction.attach(auctionAddress);
 
   // Auction parameters

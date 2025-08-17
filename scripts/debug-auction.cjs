@@ -4,9 +4,9 @@ async function main() {
   console.log("🔍 Debugging Auction ID 4...\n");
 
   // Contract addresses from deployment
-  const AUCTION_CONTRACT_ADDRESS = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const AUCTION_CONTRACT_ADDRESS = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   const USDC_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
-  const TICKET_TOKEN_ADDRESS = "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad";
+  const TICKET_TOKEN_ADDRESS = "0xD252C2A8DC02Da67d5E8F5134D10a86759092784";
 
   // Get the signer
   const [signer] = await ethers.getSigners();

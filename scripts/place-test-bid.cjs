@@ -8,7 +8,7 @@ async function main() {
   console.log("Bidding with account:", deployer.address);
 
   // Contract addresses
-  const auctionAddress = "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a";
+  const auctionAddress = "0x6E1A041298615362580065019E6Eab566dBC66a0";
   const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
 
   // Auction contract ABI (minimal for bidding)
