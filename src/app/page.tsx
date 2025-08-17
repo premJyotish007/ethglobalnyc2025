@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/hooks/useWallet'
 import { useTickets } from '@/hooks/useTickets'
+import { useAuctions } from '@/hooks/useAuctions'
+import { useActiveAuctions } from '@/hooks/useActiveAuctions'
 import { Ticket } from '@/types'
 import { Ticket as TicketIcon, DollarSign, Users, TrendingUp, Plus } from 'lucide-react'
 import { createHandleFunctions, createStats } from '@/lib/utilFunctions'
@@ -18,7 +20,7 @@ export default function Home() {
   const { connection } = useWallet()
   const { 
     tickets, 
-    isLoading, 
+    isLoading: ticketsLoading, 
     placeBid, 
     buyTicket,
     listTicket,
@@ -26,6 +28,11 @@ export default function Home() {
     refreshTickets,
     getUserTickets
   } = useTickets()
+  
+  const { createAuction, isCreatingAuction } = useAuctions()
+  
+  // Use the new hook for active auctions
+  const { auctions: activeAuctions, dummyTickets, isLoading: auctionsLoading, error: auctionsError, refreshAuctions } = useActiveAuctions()
   
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [isBidModalOpen, setIsBidModalOpen] = useState(false)
@@ -66,12 +73,36 @@ export default function Home() {
     return userBids.find(bid => bid.tokenId === selectedTicket.tokenId)
   }
 
+  // Handle selling ticket (creating auction)
+  const handleSellTicket = async (ticketData: any) => {
+    try {
+      setIsProcessing(true)
+      
+      // Create auction with the ticket data
+      await createAuction({
+        ticketId: ticketData.tokenId,
+        startPrice: Number(ticketData.startPrice) / 1000000, // Convert from BigInt to USDC
+        buyNowPrice: Number(ticketData.buyNowPrice) / 1000000,
+        minIncrement: Number(ticketData.minIncrement) / 1000000,
+        expiryDays: Math.ceil(Number(ticketData.expiryTime - BigInt(Math.floor(Date.now() / 1000))) / (24 * 60 * 60))
+      })
+      
+      setIsSellModalOpen(false)
+      refreshTickets() // Refresh to show updated ticket status
+      refreshAuctions() // Refresh auctions to show the new one
+      
+    } catch (error) {
+      console.error('Error selling ticket:', error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   // Create handle functions using utility
   const {
     handleBid,
     handleBuy,
     handlePlaceBid,
-    handleSellTicket,
     handleRemoveTicket,
     handleCancelBid
   } = createHandleFunctions({
@@ -94,6 +125,9 @@ export default function Home() {
   }, [connection.address])
 
   const stats = createStats(tickets)
+  
+  // Combine loading states
+  const isLoading = ticketsLoading || auctionsLoading
 
   // Add a quick link to the https://faucet.circle.com/ to get some testnet USDC
   // Add a quick link to the https://sepolia.base.org/ to view the transactions
@@ -109,7 +143,7 @@ export default function Home() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">VeriTix</h1>
-                <p className="text-sm text-muted-foreground">Decentralized Ticket Trading</p>
+                                  <p className="text-sm text-muted-foreground">Fair Onchain Ticket Resale</p>
               </div>
             </div>
             <WalletConnect />
@@ -172,6 +206,10 @@ export default function Home() {
             <p className="text-muted-foreground mt-2">
               Browse and bid on tokenized event tickets
             </p>
+            {/* Debug info */}
+            <div className="text-xs text-muted-foreground mt-1">
+              Blockchain Auctions: {activeAuctions.length} | Dummy Tickets: {dummyTickets.length}
+            </div>
           </div>
           <div className="flex items-center gap-4">
             {connection.isConnected && (
@@ -179,9 +217,10 @@ export default function Home() {
                 <Button 
                   onClick={() => setIsSellModalOpen(true)}
                   className="flex items-center gap-2"
+                  disabled={isCreatingAuction}
                 >
                   <Plus className="h-4 w-4" />
-                  Sell Ticket
+                  {isCreatingAuction ? 'Creating Auction...' : 'Create Auction'}
                 </Button>
                 <Badge variant="secondary" className="text-sm">
                   Connected: {connection.provider === 'privy' ? 'Smart Wallet' : connection.provider}
@@ -207,7 +246,36 @@ export default function Home() {
           <>
             <TicketGrid
               key={bidRefreshKey}
-              tickets={tickets}
+              tickets={[
+                // Convert blockchain auctions to ticket format
+                ...activeAuctions.map(auction => ({
+                  id: `auction-${auction.auctionId}`, // Unique prefix for auctions
+                  tokenId: auction.ticketId.toString(),
+                  eventName: auction.ticketInfo?.eventName || `Ticket #${auction.ticketId}`,
+                  section: auction.ticketInfo?.section || 'Unknown',
+                  row: auction.ticketInfo?.row || 'Unknown',
+                  seat: auction.ticketInfo?.seat || 'Unknown',
+                  eventDate: auction.ticketInfo?.eventDate || 'Unknown',
+                  price: auction.startPrice,
+                  seller: auction.seller,
+                  auctionId: parseInt(auction.auctionId), // Convert to number for auction lookup
+                  startPrice: auction.startPrice,
+                  buyNowPrice: auction.buyNowPrice,
+                  minIncrement: auction.minIncrement,
+                  expiryTime: auction.expiryTime,
+                  highestBid: auction.highestBid,
+                  highestBidder: auction.highestBidder,
+                  isBlockchainAuction: true, // Flag to identify blockchain auctions
+                  tokenContractAddress: "0xD252C2A8DC02Da67d5E8F5134D10a86759092784", // From deployment info
+                  isListed: true // Mark as listed since it's in an auction
+                })),
+                // Add dummy tickets
+                ...dummyTickets.map(ticket => ({
+                  ...ticket,
+                  id: `dummy-${ticket.id}`, // Unique prefix for dummy tickets
+                  isBlockchainAuction: false // Flag to identify dummy tickets
+                }))
+              ]}
               onBid={handleBid}
               onBuy={handleBuy}
               currentUserAddress={connection.address}
@@ -221,6 +289,7 @@ export default function Home() {
                 tickets={getUserTickets(connection.address || '')}
                 onRemoveTicket={handleRemoveTicket}
                 isLoading={isLoading}
+                userAddress={connection.address}
               />
             </div>
 
@@ -242,7 +311,7 @@ export default function Home() {
                         We know your event is important to you. In the rare case there&apos;s an issue with your order, we&apos;ll make it right with comparable or better tickets, or your money back.
                       </p>
                       <div>
-                        <p className="font-semibold mb-2">What happens if someone tries to sell fake tickets on TicketBid?</p>
+                        <p className="font-semibold mb-2">What happens if someone tries to sell fake tickets on VeriTix?</p>
                         <p>
                           Our Seller Policies require sellers to only list valid tickets, provide accurate information in the ticket listing, and fulfill orders with the correct tickets in time for the event.
                         </p>
@@ -259,28 +328,14 @@ export default function Home() {
         )}
       </main>
 
-      {/* Bid Modal */}
-      {selectedTicket && (
-        <BidModal
-          ticket={selectedTicket}
-          isOpen={isBidModalOpen}
-          onClose={() => {
-            setIsBidModalOpen(false)
-            setSelectedTicket(null)
-          }}
-          onPlaceBid={handlePlaceBid}
-          onCancelBid={handleCancelBid}
-          currentUserBid={getCurrentUserBid()}
-          isLoading={isProcessing}
-        />
-      )}
+      {/* Bid Modal is now handled by TicketGrid component */}
 
       {/* Sell Ticket Modal */}
       <SellTicketModal
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
         onSubmit={handleSellTicket}
-        isLoading={isProcessing}
+        isLoading={isCreatingAuction}
         userAddress={connection.address}
       />
     </div>

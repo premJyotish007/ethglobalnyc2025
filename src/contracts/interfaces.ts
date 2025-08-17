@@ -67,3 +67,46 @@ export interface USDCContract {
   
   allowance(owner: string, spender: string): Promise<bigint>
 }
+
+export interface TicketAuctionContract {
+  // Auction management
+  createAuction(
+    ticketId: bigint,
+    ticketCount: bigint,
+    startPrice: bigint,
+    buyNowPrice: bigint,
+    minIncrement: bigint,
+    expiryTime: bigint
+  ): Promise<bigint>
+  
+  // Bidding
+  bid(auctionId: bigint, bidPrice: bigint): Promise<void>
+  
+  // Buy now
+  buyNow(auctionId: bigint): Promise<void>
+  
+  // Query functions
+  getAuction(auctionId: bigint): Promise<AuctionData>
+  
+  getActiveAuctionForTicket(ticketId: bigint): Promise<bigint>
+  
+  // Admin functions
+  settle(auctionId: bigint): Promise<void>
+  
+  refund(ticketId: bigint): Promise<void>
+}
+
+export interface AuctionData {
+  auctionId: bigint
+  ticketId: bigint
+  ticketCount: bigint
+  startPrice: bigint
+  buyNowPrice: bigint
+  minIncrement: bigint
+  expiryTime: bigint
+  seller: string
+  highestBidder: string
+  highestBid: bigint
+  isActive: boolean
+  isSettled: boolean
+}

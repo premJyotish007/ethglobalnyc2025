@@ -1,66 +1,96 @@
-import { ethers } from "hardhat";
-import * as dotenv from "dotenv";
-
-dotenv.config();
+const { ethers } = require("hardhat");
 
 async function main() {
-  console.log("Deploying TicketAuction contract...");
+  console.log("Deploying TicketAuction contract to Base Sepolia...");
 
-  // Get the deployer account
+  // Get the signer
   const [deployer] = await ethers.getSigners();
-  console.log("Deploying contracts with the account:", deployer.address);
+  console.log("Deploying with account:", deployer.address);
 
-  // Get the TicketToken contract address from environment
-  const ticketTokenAddress = process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS;
-  if (!ticketTokenAddress) {
-    throw new Error("NEXT_PUBLIC_TOKEN_CONTRACT_ADDRESS not found in environment variables");
-  }
+  // Base Sepolia USDC address (real USDC, not mock)
+  const usdcAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7e";
+  console.log("Using Base Sepolia USDC address:", usdcAddress);
 
-  // For Base Sepolia, we'll use a testnet USDC address
-  // This is a mock USDC token for testing - in production you'd use the real USDC address
-  const usdcTokenAddress = "0x036CbD53842c5426634e7929541eC2318f3dCF7c"; // Base Sepolia USDC testnet
+  // Deploy TicketToken
+  console.log("Deploying TicketToken...");
+  const TicketToken = await ethers.getContractFactory("TicketToken");
+  const ticketToken = await TicketToken.deploy("https://api.example.com/tickets/{id}", deployer.address);
+  await ticketToken.waitForDeployment();
+  console.log("TicketToken deployed to:", await ticketToken.getAddress());
 
-  // Set coordinator address (using deployer for now, you can change this)
-  const coordinatorAddress = deployer.address;
-
-  console.log("Deployment parameters:");
-  console.log("- USDC Token Address:", usdcTokenAddress);
-  console.log("- Ticket Token Address:", ticketTokenAddress);
-  console.log("- Coordinator Address:", coordinatorAddress);
-  console.log("- Owner Address:", deployer.address);
-
-  // Deploy the TicketAuction contract
+  // Deploy TicketAuction
+  console.log("Deploying TicketAuction...");
   const TicketAuction = await ethers.getContractFactory("TicketAuction");
-  const auctionContract = await TicketAuction.deploy(
-    usdcTokenAddress,
-    ticketTokenAddress,
-    coordinatorAddress,
-    deployer.address // initial owner
+  const ticketAuction = await TicketAuction.deploy(
+    usdcAddress, // Real USDC token address
+    await ticketToken.getAddress(), // Ticket token address
+    deployer.address, // Coordinator address (same as deployer for now)
+    deployer.address // Initial owner
   );
+  await ticketAuction.waitForDeployment();
+  console.log("TicketAuction deployed to:", await ticketAuction.getAddress());
 
-  await auctionContract.waitForDeployment();
-  const auctionAddress = await auctionContract.getAddress();
+  // Mint some tickets for testing
+  console.log("Minting test tickets...");
+  const eventName = "ETHGlobal NYC 2025";
+  const section = "VIP";
+  const row = "A";
+  const seat = "1-5";
+  const eventDate = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60); // 30 days from now
+  const price = ethers.parseUnits("100", 6); // 100 USDC
+  const amount = 5; // 5 tickets
 
-  console.log("\n✅ TicketAuction deployed successfully!");
-  console.log("Contract Address:", auctionAddress);
+  const createTicketsTx = await ticketToken.createTickets(
+    deployer.address,
+    amount,
+    eventName,
+    section,
+    row,
+    seat,
+    eventDate,
+    price
+  );
+  await createTicketsTx.wait();
+  console.log("Minted 5 test tickets");
 
-  // Verify the deployment
-  console.log("\nVerifying deployment...");
-  const deployedContract = await ethers.getContractAt("TicketAuction", auctionAddress);
-  const usdcToken = await deployedContract.usdcToken();
-  const ticketToken = await deployedContract.ticketToken();
-  const coordinator = await deployedContract.coordinator();
-  const owner = await deployedContract.owner();
+  console.log("\n=== Deployment Summary ===");
+  console.log("Network: Base Sepolia");
+  console.log("USDC (Real):", usdcAddress);
+  console.log("TicketToken:", await ticketToken.getAddress());
+  console.log("TicketAuction:", await ticketAuction.getAddress());
+  console.log("Deployer:", deployer.address);
+  console.log("\n=== Test Data ===");
+  console.log("Ticket Balance:", await ticketToken.balanceOf(deployer.address, 1));
+  console.log("Note: You'll need real USDC to test bidding. Get some from Base Sepolia faucet.");
+  
+  // Save deployment addresses to a file
+  const deploymentInfo = {
+    network: "base-sepolia",
+    deployer: deployer.address,
+    contracts: {
+      usdc: usdcAddress,
+      ticketToken: await ticketToken.getAddress(),
+      ticketAuction: await ticketAuction.getAddress()
+    },
+    timestamp: new Date().toISOString()
+  };
 
-  console.log("Verification successful:");
-  console.log("- USDC Token:", usdcToken);
-  console.log("- Ticket Token:", ticketToken);
-  console.log("- Coordinator:", coordinator);
-  console.log("- Owner:", owner);
-
-  console.log("\n🎉 Deployment completed successfully!");
-  console.log("📋 Contract Address:", auctionAddress);
-  console.log("🔗 Base Sepolia Explorer: https://sepolia.basescan.org/address/" + auctionAddress);
+  const fs = require('fs');
+  fs.writeFileSync(
+    'deployment-info.json',
+    JSON.stringify(deploymentInfo, null, 2)
+  );
+  console.log("\nDeployment info saved to deployment-info.json");
+  
+  console.log("\n🔗 Base Sepolia Explorer Links:");
+  console.log("USDC:", `https://sepolia.basescan.org/address/${usdcAddress}`);
+  console.log("TicketToken:", `https://sepolia.basescan.org/address/${await ticketToken.getAddress()}`);
+  console.log("TicketAuction:", `https://sepolia.basescan.org/address/${await ticketAuction.getAddress()}`);
+  
+  console.log("\n💰 To get USDC for testing:");
+  console.log("1. Visit Base Sepolia Faucet: https://www.coinbase.com/faucets/base-ethereum-sepolia-faucet");
+  console.log("2. Or use other Base Sepolia faucets");
+  console.log("3. You'll need real USDC to place bids on auctions");
 }
 
 main()
