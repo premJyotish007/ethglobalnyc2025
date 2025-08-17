@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react'
 import { Ticket, Bid } from '@/types'
 import { ethers } from 'ethers'
 
+const ERC20_ABI = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function transfer(address to, uint256 value) external returns (bool)",
+  "function transferFrom(address from, address to, uint256 value) external returns (bool)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event Approval(address indexed owner, address indexed spender, uint256 value)"
+]
+
+const USDC_CONTRACT_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" // mainnet
+// Or your deployed mock USDC address if on testnet
+
+
 
 // Function to load tickets from JSON file
 const loadTicketsFromFile = async (): Promise<Ticket[]> => {
@@ -110,10 +124,26 @@ export function useTickets() {
     const provider = new ethers.BrowserProvider(window.ethereum as any)
     const signer = await provider.getSigner()
 
+    const usdcContract = new ethers.Contract(
+    USDC_CONTRACT_ADDRESS,
+    ERC20_ABI,
+    signer
+  )
+
+
+
+
+
     console.log(`Signer address: ${await signer.getAddress()}`)
     // Find the ticket to buy
     const { AUCTION_CONTRACT_ABI, CONTRACT_ADDRESS_AUCTION_DATA } = await import('@/lib/contract')
 
+        // Approve auction contract to spend buyer’s USDC
+    const approveTx = await usdcContract.approve(
+      CONTRACT_ADDRESS_AUCTION_DATA,
+      ethers.parseUnits("50", 6) // make sure to use parseUnits("amount", 6)
+    )
+    await approveTx.wait()
     // Create contract instance
     const auctionContract = new ethers.Contract(
       CONTRACT_ADDRESS_AUCTION_DATA!,
@@ -121,12 +151,28 @@ export function useTickets() {
       signer
     )
 
+
     console.log("Tickets:", tickets);
     console.log("Looking for ticketId:", ticketId);
     const auctionId = tickets.find(t => t.id === ticketId)?.auctionId;
     console.log("Found auctionId:", auctionId);
 
     console.log(`Buying ticket with auctionId: ${auctionId}`)
+
+    console.log("Auction contract:", CONTRACT_ADDRESS_AUCTION_DATA)
+    
+console.log("USDC contract:", USDC_CONTRACT_ADDRESS)
+
+const buyerAddress = await signer.getAddress()
+console.log("Buyer:", buyerAddress)
+
+const balance = await usdcContract.balanceOf(buyerAddress)
+console.log("USDC balance:", ethers.formatUnits(balance, 6))
+
+const allowance = await usdcContract.allowance(buyerAddress, CONTRACT_ADDRESS_AUCTION_DATA)
+console.log("Allowance:", ethers.formatUnits(allowance, 6))
+
+
     // buy the ticket 
     const tx = await auctionContract.buyNow(auctionId)
 
@@ -142,11 +188,13 @@ export function useTickets() {
       const emittedFinalPrice = event.args?.buyNowPrice.toString()
 
       console.log(`Ticket ${emittedAuctionId} bought by ${emittedBuyer} for ${emittedFinalPrice}`)
-    }
-  
 
     // Remove ticket from local state
     // setTickets(prev => prev.filter(ticket => ticket.id !== ticketId))
+
+    }
+
+
 
 
     return true
