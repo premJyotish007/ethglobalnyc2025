@@ -3,7 +3,7 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TicketBid - Decentralized Ticket Trading",
+  title: "VeriTix – Fair Onchain Ticket Resale",
   description: "Trade tokenized tickets with USDC on the blockchain",
 };
 

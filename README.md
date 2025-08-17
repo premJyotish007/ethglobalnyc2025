@@ -1,4 +1,4 @@
-# TicketBid - Decentralized Ticket Trading Platform
+# VeriTix – Fair Onchain Ticket Resale
 
 A modern, decentralized platform for trading tokenized event tickets using USDC on the blockchain. Built with Next.js, TypeScript, and Web3 technologies featuring **Privy Account Abstraction** for seamless smart wallet creation.
 
@@ -144,7 +144,7 @@ module.exports = {
 4. **Deployment**: Automated deployment scripts
 5. **Verification**: Contract verification on BaseScan
 
-### 🚀 Deployment of TicketBid Contract on Base Sepolia
+### 🚀 Deployment of VeriTix Contract on Base Sepolia
 
 The smart contracts are deployed using a comprehensive deployment pipeline:
 
@@ -291,7 +291,7 @@ We deploy ticketing logic as smart contracts on the **Flow Testnet**, making all
 ### Network Details
 - **Network**: Flow Testnet
 - **Contract Address**: `0x6DD6c968b1c28259B8075Fd569301a62714872aA`
-- **Contract Name**: TicketBid
+- **Contract Name**: VeriTix
 
 ### ✨ Features
 
@@ -444,7 +444,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support, email support@ticketbid.com or join our Discord community.
+For support, email support@veritix.com or join our Discord community.
 
 ## Roadmap
 
