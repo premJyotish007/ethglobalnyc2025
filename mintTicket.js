@@ -15,7 +15,7 @@ async function createTickets() {
     const provider = new ethers.JsonRpcProvider('https://sepolia.base.org');
     
     // Connect with private key (replace with your private key)
-    const privateKey = "c1a9102a3fb9d34ccc273073cc1cc83256497ed8f69e8568116de79cfb0fc50b";
+    const privateKey = "";
     const wallet = new ethers.Wallet(privateKey, provider);
     
     // Create contract instance
