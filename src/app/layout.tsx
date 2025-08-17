@@ -3,8 +3,8 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TicketBid - Decentralized Ticket Trading",
-  description: "Trade tokenized tickets with USDC on the blockchain",
+  title: "VeriTix - Decentralized Ticket Trading",
+  description: "Fair resale. Real Fans. Onchain.",
 };
 
 export default function RootLayout({

@@ -108,7 +108,7 @@ export default function Home() {
                 <TicketIcon className="h-6 w-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">TicketBid</h1>
+                <h1 className="text-2xl font-bold">VeriTix</h1>
                 <p className="text-sm text-muted-foreground">Decentralized Ticket Trading</p>
               </div>
             </div>

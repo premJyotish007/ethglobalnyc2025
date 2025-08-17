@@ -1,4 +1,4 @@
-# TicketBid - Decentralized Ticket Trading Platform
+# VeriTix - Decentralized Ticket Trading Platform
 
 A modern, decentralized platform for trading tokenized event tickets using USDC on the blockchain. Built with Next.js, TypeScript, and Web3 technologies featuring **Privy Account Abstraction** for seamless smart wallet creation.
 
