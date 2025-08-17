@@ -5,7 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatAddress(address: string): string {
+export function formatAddress(address: string | undefined): string {
+  if (!address) return 'N/A'
   return `${address.slice(0, 6)}...${address.slice(-4)}`
 }
 

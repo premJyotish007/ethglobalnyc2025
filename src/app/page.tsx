@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useWallet } from '@/hooks/useWallet'
 import { useTickets } from '@/hooks/useTickets'
+import { useAuctions } from '@/hooks/useAuctions'
+import { useActiveAuctions } from '@/hooks/useActiveAuctions'
 import { Ticket } from '@/types'
 import { Ticket as TicketIcon, DollarSign, Users, TrendingUp, Plus } from 'lucide-react'
 import { createHandleFunctions, createStats } from '@/lib/utilFunctions'
@@ -18,7 +20,7 @@ export default function Home() {
   const { connection } = useWallet()
   const { 
     tickets, 
-    isLoading, 
+    isLoading: ticketsLoading, 
     placeBid, 
     buyTicket,
     listTicket,
@@ -26,6 +28,11 @@ export default function Home() {
     refreshTickets,
     getUserTickets
   } = useTickets()
+  
+  const { createAuction, isCreatingAuction } = useAuctions()
+  
+  // Use the new hook for active auctions
+  const { auctions: activeAuctions, dummyTickets, isLoading: auctionsLoading, error: auctionsError, refreshAuctions } = useActiveAuctions()
   
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [isBidModalOpen, setIsBidModalOpen] = useState(false)
@@ -65,12 +72,25 @@ export default function Home() {
     return userBids.find(bid => bid.tokenId === selectedTicket.tokenId)
   }
 
+  // Handle selling ticket (creating auction)
+  const handleSellTicket = async (ticketData: any) => {
+    try {
+      setIsProcessing(true)
+      await createAuction(ticketData)
+      setIsSellModalOpen(false)
+      refreshTickets() // Refresh to show updated ticket status
+    } catch (error) {
+      console.error('Error selling ticket:', error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   // Create handle functions using utility
   const {
     handleBid,
     handleBuy,
     handlePlaceBid,
-    handleSellTicket,
     handleRemoveTicket,
     handleCancelBid
   } = createHandleFunctions({
@@ -93,6 +113,9 @@ export default function Home() {
   }, [connection.address])
 
   const stats = createStats(tickets)
+  
+  // Combine loading states
+  const isLoading = ticketsLoading || auctionsLoading
 
   // Add a quick link to the https://faucet.circle.com/ to get some testnet USDC
   // Add a quick link to the https://sepolia.base.org/ to view the transactions
@@ -178,9 +201,10 @@ export default function Home() {
                 <Button 
                   onClick={() => setIsSellModalOpen(true)}
                   className="flex items-center gap-2"
+                  disabled={isCreatingAuction}
                 >
                   <Plus className="h-4 w-4" />
-                  Sell Ticket
+                  {isCreatingAuction ? 'Creating Auction...' : 'Create Auction'}
                 </Button>
                 <Badge variant="secondary" className="text-sm">
                   Connected: {connection.provider === 'privy' ? 'Smart Wallet' : connection.provider}
@@ -206,7 +230,34 @@ export default function Home() {
           <>
             <TicketGrid
               key={bidRefreshKey}
-              tickets={tickets}
+              tickets={[
+                // Convert blockchain auctions to ticket format
+                ...activeAuctions.map(auction => ({
+                  id: `auction-${auction.auctionId}`, // Unique prefix for auctions
+                  tokenId: auction.ticketId,
+                  eventName: auction.ticketInfo?.eventName || `Ticket #${auction.ticketId}`,
+                  section: auction.ticketInfo?.section || 'Unknown',
+                  row: auction.ticketInfo?.row || 'Unknown',
+                  seat: auction.ticketInfo?.seat || 'Unknown',
+                  eventDate: auction.ticketInfo?.eventDate || 'Unknown',
+                  price: auction.startPrice,
+                  seller: auction.seller,
+                  auctionId: auction.auctionId,
+                  startPrice: auction.startPrice,
+                  buyNowPrice: auction.buyNowPrice,
+                  minIncrement: auction.minIncrement,
+                  expiryTime: auction.expiryTime,
+                  highestBid: auction.highestBid,
+                  highestBidder: auction.highestBidder,
+                  isBlockchainAuction: true // Flag to identify blockchain auctions
+                })),
+                // Add dummy tickets
+                ...dummyTickets.map(ticket => ({
+                  ...ticket,
+                  id: `dummy-${ticket.id}`, // Unique prefix for dummy tickets
+                  isBlockchainAuction: false // Flag to identify dummy tickets
+                }))
+              ]}
               onBid={handleBid}
               onBuy={handleBuy}
               currentUserAddress={connection.address}
@@ -220,6 +271,7 @@ export default function Home() {
                 tickets={getUserTickets(connection.address || '')}
                 onRemoveTicket={handleRemoveTicket}
                 isLoading={isLoading}
+                userAddress={connection.address}
               />
             </div>
           </>
@@ -247,7 +299,7 @@ export default function Home() {
         isOpen={isSellModalOpen}
         onClose={() => setIsSellModalOpen(false)}
         onSubmit={handleSellTicket}
-        isLoading={isProcessing}
+        isLoading={isCreatingAuction}
         userAddress={connection.address}
       />
     </div>

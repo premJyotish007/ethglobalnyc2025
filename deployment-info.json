@@ -1,0 +1,10 @@
+{
+  "network": "base-sepolia",
+  "deployer": "0xbF10d140c267de7A00f751e77ad732830deb54cE",
+  "contracts": {
+    "mockUSDC": "0x01d180E448AC87CeE5dcB2C961ceB227393a94E3",
+    "ticketToken": "0x4D4503B3aaf33d3dFc0388B26e14972ac62140ad",
+    "ticketAuction": "0x4f0ebF8e705ec90D29928E85CFc1666d3595768a"
+  },
+  "timestamp": "2025-08-17T00:26:06.873Z"
+}

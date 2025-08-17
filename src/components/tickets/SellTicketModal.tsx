@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Ticket, Plus, X, Wallet, Calendar, MapPin, DollarSign } from 'lucide-react'
 import { formatUSDC } from '@/lib/utils'
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contract'
+import { CONTRACT_ADDRESS, CONTRACT_ABI, AUCTION_CONTRACT_ADDRESS, AUCTION_CONTRACT_ABI } from '@/lib/contract'
 
 interface TicketInfo {
   eventName: string
@@ -29,25 +29,29 @@ interface UserTicket {
 
 interface SellTicketFormData {
   tokenId: string
-  price: string
+  startPrice: string
+  buyNowPrice: string
+  minIncrement: string
+  expiryDays: string
 }
 
 interface SellTicketModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (ticketData: { tokenId: string; price: bigint; ticketInfo?: any }) => Promise<void>
+  onSubmit: (ticketData: { tokenId: string; startPrice: bigint; buyNowPrice: bigint; minIncrement: bigint; expiryTime: bigint; ticketInfo?: any }) => Promise<void>
   isLoading: boolean
   userAddress?: string
 }
-
-
 
 export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddress }: SellTicketModalProps) {
   const [userTickets, setUserTickets] = useState<UserTicket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<UserTicket | null>(null)
   const [formData, setFormData] = useState<SellTicketFormData>({
     tokenId: '',
-    price: ''
+    startPrice: '',
+    buyNowPrice: '',
+    minIncrement: '',
+    expiryDays: '7'
   })
   const [isLoadingTickets, setIsLoadingTickets] = useState(false)
 
@@ -122,22 +126,31 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!selectedTicket || !formData.price) {
+    if (!selectedTicket || !formData.startPrice || !formData.buyNowPrice || !formData.minIncrement || !formData.expiryDays) {
       return
     }
 
-    const priceInWei = BigInt(Math.floor(parseFloat(formData.price) * 1000000)) // Convert USDC to wei (6 decimals)
+    const startPrice = BigInt(Math.floor(parseFloat(formData.startPrice) * 1000000)) // Convert USDC to wei (6 decimals)
+    const buyNowPrice = BigInt(Math.floor(parseFloat(formData.buyNowPrice) * 1000000)) // Convert USDC to wei (6 decimals)
+    const minIncrement = BigInt(Math.floor(parseFloat(formData.minIncrement) * 1000000)) // Convert USDC to wei (6 decimals)
+    const expiryTime = BigInt(Math.floor(Date.now() / 1000) + (parseInt(formData.expiryDays) * 24 * 60 * 60)) // Convert days to seconds
     
     await onSubmit({
       tokenId: selectedTicket.tokenId,
-      price: priceInWei,
+      startPrice,
+      buyNowPrice,
+      minIncrement,
+      expiryTime,
       ticketInfo: selectedTicket.ticketInfo
     })
 
     // Reset form
     setFormData({
       tokenId: '',
-      price: ''
+      startPrice: '',
+      buyNowPrice: '',
+      minIncrement: '',
+      expiryDays: '7'
     })
     setSelectedTicket(null)
   }
@@ -148,7 +161,13 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
 
   const selectTicket = (ticket: UserTicket) => {
     setSelectedTicket(ticket)
-    setFormData(prev => ({ ...prev, tokenId: ticket.tokenId }))
+    setFormData(prev => ({ 
+      ...prev, 
+      tokenId: ticket.tokenId,
+      startPrice: (parseFloat(ticket.ticketInfo.price) * 0.8).toFixed(2), // 80% of original price as start
+      buyNowPrice: (parseFloat(ticket.ticketInfo.price) * 1.2).toFixed(2), // 120% of original price as buy now
+      minIncrement: '5.00' // Default 5 USDC increment
+    }))
   }
 
   if (!isOpen) return null
@@ -235,21 +254,68 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
           {/* Sell Form */}
           {selectedTicket && (
             <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4">Sell Ticket with token ID #{selectedTicket.tokenId}</h3>
+              <h3 className="text-lg font-semibold mb-4">Create Auction for Ticket #{selectedTicket.tokenId}</h3>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Selling Price (USDC)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="5.00"
-                    value={formData.price}
-                    onChange={(e) => handleInputChange('price', e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Original price: {selectedTicket.ticketInfo.price} USDC. This is the price you will could recieve from a "buy now" transaction.
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Starting Price (USDC)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="50.00"
+                      value={formData.startPrice}
+                      onChange={(e) => handleInputChange('startPrice', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Buy Now Price (USDC)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="200.00"
+                      value={formData.buyNowPrice}
+                      onChange={(e) => handleInputChange('buyNowPrice', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Min Bid Increment (USDC)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="5.00"
+                      value={formData.minIncrement}
+                      onChange={(e) => handleInputChange('minIncrement', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Auction Duration (Days)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="30"
+                      placeholder="7"
+                      value={formData.expiryDays}
+                      onChange={(e) => handleInputChange('expiryDays', e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Original price:</strong> {selectedTicket.ticketInfo.price} USDC<br/>
+                    <strong>Starting price:</strong> {formData.startPrice || '0'} USDC<br/>
+                    <strong>Buy now price:</strong> {formData.buyNowPrice || '0'} USDC<br/>
+                    <strong>Duration:</strong> {formData.expiryDays || '7'} days
                   </p>
                 </div>
 
@@ -262,7 +328,7 @@ export function SellTicketModal({ isOpen, onClose, onSubmit, isLoading, userAddr
                     disabled={isLoading || !selectedTicket.ticketInfo.isActive || selectedTicket.isUsed} 
                     className="flex-1"
                   >
-                    {isLoading ? 'Listing...' : 'List for Sale'}
+                    {isLoading ? 'Creating Auction...' : 'Create Auction'}
                   </Button>
                 </div>
               </form>

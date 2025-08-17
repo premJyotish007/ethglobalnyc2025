@@ -76,9 +76,15 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: Ti
         <div className="flex justify-between items-start gap-3">
           <CardTitle className="text-lg flex-1 min-w-0 break-words">{ticket.eventName}</CardTitle>
           <div className="flex gap-1">
-            <Badge variant={ticket.isListed ? "default" : "secondary"} className="flex-shrink-0">
-              {ticket.isListed ? "Listed" : "Not Listed"}
-            </Badge>
+            {(ticket as any).isBlockchainAuction ? (
+              <Badge variant="default" className="flex-shrink-0 bg-green-600">
+                🚀 Live Auction
+              </Badge>
+            ) : (
+              <Badge variant={ticket.isListed ? "default" : "secondary"} className="flex-shrink-0">
+                {ticket.isListed ? "Listed" : "Not Listed"}
+              </Badge>
+            )}
             {isBiddingExpired && (
               <Badge variant="destructive" className="flex-shrink-0">
                 Bidding Expired
@@ -95,7 +101,7 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: Ti
       <CardContent className="space-y-3">
         <div className="flex items-center gap-2 text-sm">
           <MapPin className="h-4 w-4" />
-          <span>{ticket.venue}</span>
+          <span>{ticket.venue || `${ticket.section}, Row ${ticket.row}, Seat ${ticket.seat}`}</span>
         </div>
         
         <div className="grid grid-cols-3 gap-2 text-sm">
@@ -121,10 +127,36 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: Ti
         </div>
         
         <div className="border-t pt-3">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Price:</span>
-            <span className="text-lg font-bold">{formatUSDC(ticket.price)} USDC</span>
-          </div>
+          {/* Special display for blockchain auctions */}
+          {(ticket as any).isBlockchainAuction ? (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Starting Price:</span>
+                <span className="text-lg font-bold">{formatUSDC(ticket.price)} USDC</span>
+              </div>
+              {(ticket as any).buyNowPrice && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Buy Now Price:</span>
+                  <span className="text-lg font-bold text-green-600">{formatUSDC((ticket as any).buyNowPrice)} USDC</span>
+                </div>
+              )}
+              {(ticket as any).highestBid && (ticket as any).highestBid.toString() !== "0" && (
+                <div className="flex justify-between items-center bg-blue-50 dark:bg-blue-950/20 p-2 rounded-md">
+                  <span className="text-sm text-blue-600 font-medium">Current Bid:</span>
+                  <span className="text-sm font-bold text-blue-600">{formatUSDC((ticket as any).highestBid)} USDC</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>Min Increment: {formatUSDC((ticket as any).minIncrement || BigInt(0))} USDC</span>
+                <span>Expires: {new Date(Number((ticket as any).expiryTime || 0) * 1000).toLocaleDateString()}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Price:</span>
+              <span className="text-lg font-bold">{formatUSDC(ticket.price)} USDC</span>
+            </div>
+          )}
           
           {/* Show countdown timer if bidExpiryTime exists */}
           {ticket.bidExpiryTime && (
@@ -154,18 +186,21 @@ export function TicketCard({ ticket, onBid, onBuy, isOwner, currentUserBid }: Ti
             </div>
           )}
           
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Ticket Token Contract:</span>
-            <span className="text-sm">{formatAddress(ticket.tokenContractAddress)}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigator.clipboard.writeText(ticket.tokenContractAddress)}
-              className="h-6 w-6 p-0"
-            >
-              <Copy className="h-3 w-3" />
-            </Button>
-          </div>
+          {/* Only show contract address if it exists */}
+          {ticket.tokenContractAddress && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Ticket Token Contract:</span>
+              <span className="text-sm">{formatAddress(ticket.tokenContractAddress)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigator.clipboard.writeText(ticket.tokenContractAddress)}
+                className="h-6 w-6 p-0"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
       </CardContent>
       
